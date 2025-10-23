@@ -83,6 +83,8 @@ namespace CGEasy.Core.Data
             mapper.Entity<TodoStudio>().Id(x => x.Id, autoId: true);
             mapper.Entity<LicenseClient>().Id(x => x.Id, autoId: true);
             mapper.Entity<LicenseKey>().Id(x => x.Id, autoId: true);
+            mapper.Entity<BilancioContabile>().Id(x => x.Id, autoId: true);
+            mapper.Entity<BilancioTemplate>().Id(x => x.Id, autoId: true);
 
             // Connection string per accesso diretto con commit immediato
             var connectionString = new ConnectionString
@@ -213,6 +215,12 @@ namespace CGEasy.Core.Data
         /// </summary>
         public ILiteCollection<BilancioContabile> BilancioContabile =>
             _database.GetCollection<BilancioContabile>("bilancio_contabile");
+
+        /// <summary>
+        /// Collection Bilancio Template (template riclassificazione)
+        /// </summary>
+        public ILiteCollection<BilancioTemplate> BilancioTemplate =>
+            _database.GetCollection<BilancioTemplate>("bilancio_template");
 
         /// <summary>
         /// Collection License Clients (clienti a cui sono state rilasciate licenze)

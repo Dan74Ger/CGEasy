@@ -482,3 +482,6 @@ $RECYCLE.BIN/
 
 # Vim temporary swap files
 *.swp
+
+# CGEasy - File con credenziali sensibili
+gestione_task.bat
