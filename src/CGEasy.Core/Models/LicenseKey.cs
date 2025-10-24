@@ -57,7 +57,32 @@ public class LicenseKey
     /// <summary>
     /// Verifica se la licenza è scaduta
     /// </summary>
-    public bool IsExpired => DataScadenza.HasValue && DataScadenza.Value < DateTime.Now;
+    public bool IsExpired => DataScadenza.HasValue && DataScadenza.Value.Date <= DateTime.Now.Date;
+    
+    /// <summary>
+    /// Durata calcolata della licenza (es: "1 anno", "10 anni", "Perpetua")
+    /// </summary>
+    public string DurataDisplay
+    {
+        get
+        {
+            if (!DataScadenza.HasValue)
+                return "♾️ Perpetua";
+            
+            var durata = DataScadenza.Value - DataGenerazione;
+            var anni = (int)(durata.TotalDays / 365);
+            var mesi = (int)((durata.TotalDays % 365) / 30);
+            
+            if (anni > 0 && mesi == 0)
+                return $"{anni} {(anni == 1 ? "anno" : "anni")}";
+            else if (anni > 0)
+                return $"{anni} {(anni == 1 ? "anno" : "anni")}, {mesi} {(mesi == 1 ? "mese" : "mesi")}";
+            else if (mesi > 0)
+                return $"{mesi} {(mesi == 1 ? "mese" : "mesi")}";
+            else
+                return $"{(int)durata.TotalDays} giorni";
+        }
+    }
 }
 
 

@@ -1,0 +1,35 @@
+ISTRUZIONI PER VEDERE I LOG DI DEBUG DELLE LICENZE
+==================================================
+
+I messaggi di debug vengono scritti usando System.Diagnostics.Debug.WriteLine()
+
+Per visualizzarli:
+
+OPZIONE 1 - Visual Studio (se lo usi):
+1. Apri la soluzione in Visual Studio
+2. Vai su Debug > Windows > Output
+3. Nella finestra Output, seleziona "Debug" dal dropdown
+4. Avvia l'app in Debug mode (F5)
+5. I messaggi appariranno nella finestra Output
+
+OPZIONE 2 - DebugView (consigliato per runtime):
+1. Scarica DebugView da Microsoft Sysinternals: https://learn.microsoft.com/en-us/sysinternals/downloads/debugview
+2. Avvia DebugView.exe (come amministratore)
+3. Vai su Capture > Capture Global Win32
+4. Avvia l'app CGEasy
+5. I messaggi di debug appariranno in tempo reale in DebugView
+
+OPZIONE 3 - Log su file (modifica codice):
+Cambia System.Diagnostics.Debug.WriteLine() in:
+File.AppendAllText("C:\\Temp\\cgeasy_license_debug.log", messaggio + "\n");
+
+==================================================
+
+COSA CERCARE NEI LOG:
+- 🔍 Tentativo attivazione
+- 🔍 Chiave originale
+- 🔍 Chiave dopo trim/upper
+- 🔍 Chiavi nel database
+- ❌ Errori
+- ✅ Successi
+

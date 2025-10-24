@@ -30,9 +30,22 @@ public class LicenseService
     /// </summary>
     private static readonly Dictionary<string, string> _licenses = new();
 
+    /// <summary>
+    /// Repository globale per validazione (iniettato dall'app principale)
+    /// </summary>
+    private static LicenseRepository? _globalRepository = null;
+
     static LicenseService()
     {
         LoadLicenses();
+    }
+
+    /// <summary>
+    /// Imposta il repository globale (chiamato dall'app all'avvio)
+    /// </summary>
+    public static void SetGlobalRepository(LicenseRepository repository)
+    {
+        _globalRepository = repository;
     }
 
     /// <summary>
@@ -48,6 +61,7 @@ public class LicenseService
                 var licenses = JsonSerializer.Deserialize<Dictionary<string, string>>(json);
                 if (licenses != null)
                 {
+                    _licenses.Clear(); // Pulisce la cache prima di ricaricare
                     foreach (var license in licenses)
                     {
                         _licenses[license.Key] = license.Value;
@@ -59,6 +73,15 @@ public class LicenseService
         {
             // File corrotto o mancante, ignora
         }
+    }
+
+    /// <summary>
+    /// Ricarica le licenze dal file e ricontrolla la validità nel database
+    /// Utile dopo modifiche alla scadenza delle licenze
+    /// </summary>
+    public static void ReloadLicenses()
+    {
+        LoadLicenses();
     }
 
     /// <summary>
@@ -91,7 +114,7 @@ public class LicenseService
     public static bool IsTodoStudioActive()
     {
         return _licenses.ContainsKey("TODO-STUDIO") && 
-               ValidateLicense("TODO-STUDIO", _licenses["TODO-STUDIO"]);
+               ValidateLicenseWithNewContext("TODO-STUDIO", _licenses["TODO-STUDIO"]);
     }
 
     public static bool ActivateTodoStudio(string licenseKey)
@@ -114,7 +137,7 @@ public class LicenseService
     public static bool IsBilanciActive()
     {
         return _licenses.ContainsKey("BILANCI") && 
-               ValidateLicense("BILANCI", _licenses["BILANCI"]);
+               ValidateLicenseWithNewContext("BILANCI", _licenses["BILANCI"]);
     }
 
     public static bool ActivateBilanci(string licenseKey)
@@ -137,7 +160,7 @@ public class LicenseService
     public static bool IsCircolariActive()
     {
         return _licenses.ContainsKey("CIRCOLARI") && 
-               ValidateLicense("CIRCOLARI", _licenses["CIRCOLARI"]);
+               ValidateLicenseWithNewContext("CIRCOLARI", _licenses["CIRCOLARI"]);
     }
 
     public static bool ActivateCircolari(string licenseKey)
@@ -160,7 +183,7 @@ public class LicenseService
     public static bool IsControlloGestioneActive()
     {
         return _licenses.ContainsKey("CONTROLLO-GESTIONE") && 
-               ValidateLicense("CONTROLLO-GESTIONE", _licenses["CONTROLLO-GESTIONE"]);
+               ValidateLicenseWithNewContext("CONTROLLO-GESTIONE", _licenses["CONTROLLO-GESTIONE"]);
     }
 
     public static bool ActivateControlloGestione(string licenseKey)
@@ -180,24 +203,56 @@ public class LicenseService
 
     // ===== METODI GENERICI =====
 
+    private static void LogDebug(string message)
+    {
+        System.Diagnostics.Debug.WriteLine(message);
+        try
+        {
+            var logPath = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.CommonDocuments), "CGEasy", "license_debug.log");
+            var logDir = Path.GetDirectoryName(logPath);
+            if (!string.IsNullOrEmpty(logDir) && !Directory.Exists(logDir))
+            {
+                Directory.CreateDirectory(logDir);
+            }
+            File.AppendAllText(logPath, $"{DateTime.Now:yyyy-MM-dd HH:mm:ss} | {message}\n");
+        }
+        catch { /* Ignora errori di log */ }
+    }
+
     private static bool ActivateModule(string moduleName, string licenseKey)
     {
         if (string.IsNullOrWhiteSpace(licenseKey))
+        {
+            LogDebug($"❌ Attivazione {moduleName} fallita: chiave vuota");
             return false;
+        }
 
+        var originalKey = licenseKey;
         licenseKey = licenseKey.Trim().ToUpper();
+
+        LogDebug($"🔍 Tentativo attivazione {moduleName}");
+        LogDebug($"🔍 Chiave originale: [{originalKey}]");
+        LogDebug($"🔍 Chiave dopo trim/upper: [{licenseKey}]");
 
         // Valida formato
         if (!licenseKey.StartsWith($"{moduleName}-"))
+        {
+            LogDebug($"❌ Attivazione {moduleName} fallita: formato non valido. Chiave: {licenseKey}");
             return false;
+        }
 
-        // Valida chiave
-        if (!ValidateLicense(moduleName, licenseKey))
-            return false;
-
-        // Salva licenza
+        // 🔥 IMPORTANTE: Non possiamo aprire il database qui perché è già aperto dall'app
+        // Salviamo nel file JSON e la validazione avverrà al prossimo avvio o quando si accede al modulo
+        
+        LogDebug($"✅ Formato chiave {moduleName} valido, salvando nel file locale");
+        
+        // Salva licenza nel file JSON locale
         _licenses[moduleName] = licenseKey;
         SaveLicenses();
+        
+        LogDebug($"✅ Modulo {moduleName} salvato nel file licenze");
+        LogDebug($"⚠️  La validazione della chiave avverrà quando si accede al modulo");
+        
         return true;
     }
 
@@ -250,6 +305,100 @@ public class LicenseService
         }
         catch
         {
+            return false;
+        }
+    }
+
+    /// <summary>
+    /// Valida una chiave di licenza creando un nuovo context
+    /// 🔥 CONTROLLO RIGOROSO MASSIMO: 
+    ///   - Licenza NON esiste → BLOCCA
+    ///   - Licenza scaduta → BLOCCA (anche per SISTEMA)
+    ///   - Errore DB → BLOCCA (sicurezza massima)
+    /// </summary>
+    private static bool ValidateLicenseWithNewContext(string moduleName, string licenseKey)
+    {
+        LogDebug($"🔍 Validazione licenza {moduleName}: chiave=[{licenseKey}]");
+        
+        if (string.IsNullOrWhiteSpace(licenseKey))
+        {
+            LogDebug($"❌ Validazione {moduleName} fallita: chiave vuota");
+            return false;
+        }
+
+        try
+        {
+            // 🔥 USA IL REPOSITORY GLOBALE SE DISPONIBILE (evita conflitti di accesso al DB)
+            if (_globalRepository != null)
+            {
+                LogDebug($"🔍 Uso repository globale per validazione {moduleName}");
+                
+                // Cerca la chiave nel database usando il repository condiviso
+                var key = _globalRepository.GetKeyByFullKey(licenseKey);
+                
+                if (key == null)
+                {
+                    LogDebug($"❌ Licenza {moduleName} non trovata nel database: {licenseKey}");
+                    return false;
+                }
+                
+                // Verifica scadenza
+                bool isValid = key.IsActive && !key.IsExpired;
+                
+                if (!isValid)
+                {
+                    LogDebug($"❌ Licenza {moduleName} NON VALIDA - IsActive: {key.IsActive}, IsExpired: {key.IsExpired}, Scadenza: {key.DataScadenza}");
+                }
+                else
+                {
+                    LogDebug($"✅ Licenza {moduleName} VALIDA - Scadenza: {key.DataScadenza?.ToString("dd/MM/yyyy") ?? "♾️ Perpetua"}");
+                }
+                
+                return isValid;
+            }
+            
+            // Fallback: apri nuovo contesto (solo se repository non disponibile)
+            LogDebug($"🔍 Tentativo apertura database per validazione {moduleName}");
+            
+            // Usa LiteDbContext che gestisce automaticamente la password
+            using var context = new LiteDbContext();
+            var repo = new LicenseRepository(context);
+            
+            LogDebug($"🔍 Database aperto, cerco chiave nel DB");
+            
+            // Cerca la chiave nel database
+            var fallbackKey = repo.GetKeyByFullKey(licenseKey);
+            
+            if (fallbackKey == null)
+            {
+                LogDebug($"❌ Licenza {moduleName} non trovata nel database: {licenseKey}");
+                // 🔥 Licenza non trovata = ACCESSO NEGATO
+                return false;
+            }
+            
+            // 🔥 CONTROLLO SCADENZA RIGOROSO
+            // Verifica che sia attiva e non scaduta (per TUTTI i clienti, anche SISTEMA)
+            bool fallbackIsValid = fallbackKey.IsActive && !fallbackKey.IsExpired;
+            
+            if (!fallbackIsValid)
+            {
+                LogDebug($"❌ Licenza {moduleName} NON VALIDA - IsActive: {fallbackKey.IsActive}, IsExpired: {fallbackKey.IsExpired}, Scadenza: {fallbackKey.DataScadenza}");
+            }
+            else
+            {
+                LogDebug($"✅ Licenza {moduleName} VALIDA - Scadenza: {fallbackKey.DataScadenza?.ToString("dd/MM/yyyy") ?? "♾️ Perpetua"}");
+            }
+            
+            return fallbackIsValid;
+        }
+        catch (Exception ex)
+        {
+            // Log per debug
+            LogDebug($"❌ ERRORE CRITICO validazione licenza {moduleName}: {ex.Message}");
+            LogDebug($"❌ Stack trace: {ex.StackTrace}");
+            
+            // 🔥 NESSUN FALLBACK - SICUREZZA MASSIMA
+            // Se c'è un errore, la licenza NON è valida = ACCESSO NEGATO
             return false;
         }
     }
