@@ -238,5 +238,408 @@ public class BilancioStatisticaService
             Importo = d.Importo
         }).ToList();
     }
+
+    /// <summary>
+    /// Genera statistiche per un cliente con più bilanci contabili
+    /// </summary>
+    /// <param name="clienteId">ID cliente</param>
+    /// <param name="periodi">Lista di periodi (mese, anno)</param>
+    /// <param name="templateMese">Mese template (opzionale)</param>
+    /// <param name="templateAnno">Anno template (opzionale)</param>
+    /// <returns>Lista di statistiche multi-periodo</returns>
+    public List<BilancioStatisticaMultiPeriodo> GeneraStatisticheMultiPeriodo(
+        int clienteId, 
+        List<(int Mese, int Anno)> periodi, 
+        int? templateMese = null, 
+        int? templateAnno = null)
+    {
+        if (periodi == null || periodi.Count == 0)
+        {
+            throw new ArgumentException("Specificare almeno un periodo");
+        }
+
+        // 1. Recupera le voci del template (dal primo periodo o dai parametri)
+        var primoPerio = periodi.First();
+        var vociTemplate = templateMese.HasValue && templateAnno.HasValue
+            ? _templateRepo.GetByPeriodo(templateMese.Value, templateAnno.Value)
+            : _templateRepo.GetByPeriodo(primoPerio.Mese, primoPerio.Anno);
+
+        vociTemplate = vociTemplate.OrderBy(v => v.CodiceMastrino).ToList();
+
+        if (!vociTemplate.Any())
+        {
+            throw new InvalidOperationException("Nessuna voce template trovata");
+        }
+
+        // 2. ⚠️ VERIFICA ASSOCIAZIONE: cerca UNA associazione per questo cliente+template (qualsiasi periodo)
+        var tutteAssociazioni = _associazioneRepo.GetByCliente(clienteId).ToList();
+        
+        // Il TemplateId nell'associazione corrisponde all'Id della prima voce del template
+        // Cerchiamo un'associazione che usa lo stesso template (stesso Mese+Anno del template)
+        int templateMeseDaCercare = templateMese ?? primoPerio.Mese;
+        int templateAnnoDaCercare = templateAnno ?? primoPerio.Anno;
+        
+        // ✅ CORRETTO: Cerca qualsiasi associazione che usa lo stesso template, SENZA controllare il periodo dell'associazione
+        // L'associazione potrebbe essere di Feb 2024, ma deve valere per tutti i periodi (Gen 2025, Feb 2025, etc.)
+        var associazioneEsistente = tutteAssociazioni.FirstOrDefault(a =>
+        {
+            if (!a.TemplateId.HasValue) return false;
+            
+            // Prendi la voce template associata
+            var voceTemplate = _templateRepo.GetById(a.TemplateId.Value);
+            if (voceTemplate == null) return false;
+            
+            // ✅ Verifica SOLO che il template corrisponda (non il periodo dell'associazione!)
+            // L'associazione di Feb 2024 vale anche per Gen 2025, perché i codici contabili sono gli stessi
+            return voceTemplate.Mese == templateMeseDaCercare && voceTemplate.Anno == templateAnnoDaCercare;
+        });
+        
+        System.Diagnostics.Debug.WriteLine($"\n🔍 DEBUG Ricerca associazione:");
+        System.Diagnostics.Debug.WriteLine($"   Template cercato: {GetNomeMese(templateMeseDaCercare)} {templateAnnoDaCercare}");
+        System.Diagnostics.Debug.WriteLine($"   Associazioni trovate per cliente: {tutteAssociazioni.Count}");
+        if (associazioneEsistente != null)
+        {
+            System.Diagnostics.Debug.WriteLine($"   ✅ Associazione TROVATA: ID={associazioneEsistente.Id}, Periodo={GetNomeMese(associazioneEsistente.Mese)} {associazioneEsistente.Anno}");
+        }
+        else
+        {
+            System.Diagnostics.Debug.WriteLine($"   ❌ Nessuna associazione trovata!");
+        }
+        
+        if (associazioneEsistente == null)
+        {
+            throw new InvalidOperationException(
+                "⚠️ ATTENZIONE: Non è stata trovata nessuna associazione tra i codici di bilancio e il template selezionato.\n\n" +
+                "Prima di generare le statistiche, devi associare i codici contabili alle voci del template.\n\n" +
+                "Vai in 'Associazioni Mastrini' e crea una nuova associazione per questo cliente e template.");
+        }
+
+        // 3. Recupera i dettagli dell'associazione (la mappatura codici → voci template)
+        var mappaturaSalvata = _associazioneRepo.GetDettagli(associazioneEsistente.Id).ToList();
+        
+        // 4. Raccogli TUTTI i codici univoci presenti in TUTTI i bilanci selezionati
+        var tuttiCodiciUnivoci = new HashSet<string>();
+        var periodiAnalizzati = new List<string>();
+        
+        foreach (var periodo in periodi)
+        {
+            var mastriniPeriodo = _bilancioRepo.GetByClienteAndPeriodo(clienteId, periodo.Mese, periodo.Anno).ToList();
+            periodiAnalizzati.Add($"{GetNomeMese(periodo.Mese)} {periodo.Anno} ({mastriniPeriodo.Count} righe)");
+            
+            System.Diagnostics.Debug.WriteLine($"🔍 DEBUG Periodo {GetNomeMese(periodo.Mese)} {periodo.Anno}:");
+            foreach (var mastrino in mastriniPeriodo)
+            {
+                tuttiCodiciUnivoci.Add(mastrino.CodiceMastrino);
+                System.Diagnostics.Debug.WriteLine($"   - Codice: {mastrino.CodiceMastrino} | Descrizione: {mastrino.DescrizioneMastrino} | Importo: {mastrino.Importo}");
+            }
+        }
+
+        System.Diagnostics.Debug.WriteLine($"\n📊 TOTALE Codici univoci trovati: {tuttiCodiciUnivoci.Count}");
+        System.Diagnostics.Debug.WriteLine($"   Codici: {string.Join(", ", tuttiCodiciUnivoci.OrderBy(c => c))}");
+
+        // 5. Verifica che TUTTI i codici siano associati nel template
+        var codiciAssociati = new HashSet<string>(mappaturaSalvata.Select(m => m.CodiceMastrino));
+        
+        System.Diagnostics.Debug.WriteLine($"\n✅ Codici ASSOCIATI nel template: {codiciAssociati.Count}");
+        System.Diagnostics.Debug.WriteLine($"   Codici: {string.Join(", ", codiciAssociati.OrderBy(c => c))}");
+        
+        var codiciNonAssociati = tuttiCodiciUnivoci.Except(codiciAssociati).OrderBy(c => c).ToList();
+
+        if (codiciNonAssociati.Any())
+        {
+            System.Diagnostics.Debug.WriteLine($"\n❌ Codici NON ASSOCIATI: {codiciNonAssociati.Count}");
+            System.Diagnostics.Debug.WriteLine($"   Codici: {string.Join(", ", codiciNonAssociati)}");
+            
+            string elencoCodici = string.Join(", ", codiciNonAssociati.Take(20));
+            if (codiciNonAssociati.Count > 20)
+                elencoCodici += $" ... (e altri {codiciNonAssociati.Count - 20})";
+
+            string periodiInfo = string.Join(", ", periodiAnalizzati);
+
+            throw new InvalidOperationException(
+                $"⚠️ ATTENZIONE: Non tutti i codici di bilancio sono associati al template!\n\n" +
+                $"Periodi analizzati: {periodiInfo}\n\n" +
+                $"Codici TOTALI trovati: {tuttiCodiciUnivoci.Count}\n" +
+                $"Codici ASSOCIATI nel template: {codiciAssociati.Count}\n\n" +
+                $"Codici NON associati ({codiciNonAssociati.Count}): {elencoCodici}\n\n" +
+                $"Vai in 'Associazioni Mastrini', modifica l'associazione esistente e associa i codici mancanti.");
+        }
+
+        // 6. Inizializza le statistiche multi-periodo
+        var statisticheMulti = new List<BilancioStatisticaMultiPeriodo>();
+        foreach (var voce in vociTemplate)
+        {
+            statisticheMulti.Add(new BilancioStatisticaMultiPeriodo
+            {
+                TemplateId = voce.Id,
+                Codice = voce.CodiceMastrino,
+                Descrizione = voce.DescrizioneMastrino,
+                Segno = voce.Segno,
+                Formula = voce.Formula,
+                DatiPerPeriodo = new Dictionary<string, DatiPeriodo>()
+            });
+        }
+
+        // 7. Per ogni periodo, calcola le statistiche USANDO LA MAPPATURA UNICA
+        foreach (var periodo in periodi)
+        {
+            string periodoKey = $"{periodo.Mese:D2}_{periodo.Anno}";
+            string periodoDisplay = $"{GetNomeMese(periodo.Mese)} {periodo.Anno}";
+
+            // Carica i mastrini attuali per questo periodo
+            var mastriniAttuali = _bilancioRepo.GetByClienteAndPeriodo(clienteId, periodo.Mese, periodo.Anno).ToList();
+            
+            // ✅ IMPORTANTE: Usa SOLO CodiceMastrino come chiave (come in Associazioni Mastrini)
+            // Se ci sono più righe con lo stesso codice, somma gli importi
+            var mastriniDict = mastriniAttuali
+                .GroupBy(m => m.CodiceMastrino)
+                .ToDictionary(
+                    g => g.Key, 
+                    g => new { 
+                        CodiceMastrino = g.Key, 
+                        DescrizioneMastrino = g.First().DescrizioneMastrino, 
+                        Importo = g.Sum(m => m.Importo) 
+                    });
+
+            // Crea mappatura: TemplateVoceId → Lista di codici bilancio associati
+            var mappaturePerVoce = mappaturaSalvata
+                .Where(d => d.TemplateVoceId.HasValue)
+                .GroupBy(d => d.TemplateVoceId!.Value)
+                .ToDictionary(g => g.Key, g => g.ToList());
+
+            // Calcola importi per ogni voce
+            var importiCalcolati = new Dictionary<string, decimal>();
+
+            foreach (var stat in statisticheMulti)
+            {
+                decimal importo = 0;
+                int numeroConti = 0;
+                var conti = new List<ContoContabileAssociato>();
+
+                // Se ha formula, calcola dopo
+                if (string.IsNullOrWhiteSpace(stat.Formula))
+                {
+                    // Trova mappature per questa voce template
+                    var voceTemplate = vociTemplate.FirstOrDefault(v => v.CodiceMastrino == stat.Codice);
+                    
+                    System.Diagnostics.Debug.WriteLine($"\n🔍 Elaborazione voce template: {stat.Codice} - {stat.Descrizione}");
+                    
+                    if (voceTemplate != null && mappaturePerVoce.TryGetValue(voceTemplate.Id, out var mappature))
+                    {
+                        System.Diagnostics.Debug.WriteLine($"   ✅ Trovate {mappature.Count} mappature per questo template (ID: {voceTemplate.Id})");
+                        
+                        // Per ogni codice bilancio associato a questa voce template, prendi l'importo dal bilancio attuale
+                        foreach (var mappatura in mappature)
+                        {
+                            // ✅ Usa SOLO il codice mastrino come chiave (come in Associazioni Mastrini)
+                            string codiceMastrino = mappatura.CodiceMastrino;
+                            
+                            System.Diagnostics.Debug.WriteLine($"   🔑 Cerco codice: '{codiceMastrino}'");
+                            
+                            if (mastriniDict.TryGetValue(codiceMastrino, out var mastrinoAttuale))
+                            {
+                                System.Diagnostics.Debug.WriteLine($"      ✅ TROVATO! Importo: {mastrinoAttuale.Importo}");
+                                
+                                importo += mastrinoAttuale.Importo;
+                                numeroConti++;
+                                conti.Add(new ContoContabileAssociato
+                                {
+                                    CodiceConto = mastrinoAttuale.CodiceMastrino,
+                                    DescrizioneConto = mastrinoAttuale.DescrizioneMastrino,
+                                    Importo = mastrinoAttuale.Importo
+                                });
+                                
+                                // Aggiungi anche alla lista totale per il dettaglio multi-periodo
+                                stat.ContiAssociatiTutti.Add(new ContoContabileAssociatoConPeriodo
+                                {
+                                    CodiceConto = mastrinoAttuale.CodiceMastrino,
+                                    DescrizioneConto = mastrinoAttuale.DescrizioneMastrino,
+                                    Importo = mastrinoAttuale.Importo,
+                                    Periodo = periodoDisplay,
+                                    Mese = periodo.Mese,
+                                    Anno = periodo.Anno
+                                });
+                            }
+                            else
+                            {
+                                System.Diagnostics.Debug.WriteLine($"      ❌ NON TROVATO nel dizionario mastrini!");
+                                System.Diagnostics.Debug.WriteLine($"      📋 Chiavi disponibili nel dizionario:");
+                                foreach (var key in mastriniDict.Keys.Take(10))
+                                {
+                                    System.Diagnostics.Debug.WriteLine($"         - '{key}'");
+                                }
+                            }
+                        }
+                        
+                        // Applica il segno del template
+                        importo = stat.Segno == "-" ? -Math.Abs(importo) : importo;
+                        
+                        System.Diagnostics.Debug.WriteLine($"   💰 Importo FINALE (dopo segno {stat.Segno}): {importo}");
+                    }
+                    else
+                    {
+                        if (voceTemplate == null)
+                            System.Diagnostics.Debug.WriteLine($"   ❌ Voce template NON TROVATA per codice: {stat.Codice}");
+                        else
+                            System.Diagnostics.Debug.WriteLine($"   ❌ Nessuna mappatura trovata per voce template ID: {voceTemplate.Id}");
+                    }
+
+                    importiCalcolati[stat.Codice] = importo;
+                }
+
+                stat.DatiPerPeriodo[periodoKey] = new DatiPeriodo
+                {
+                    PeriodoDisplay = periodoDisplay,
+                    Mese = periodo.Mese,
+                    Anno = periodo.Anno,
+                    Importo = importo,
+                    Percentuale = 0, // Calcolato dopo
+                    NumeroConti = numeroConti,
+                    Conti = conti
+                };
+            }
+
+            // Calcola formule per questo periodo
+            foreach (var stat in statisticheMulti.Where(s => s.HasFormula))
+            {
+                try
+                {
+                    decimal importoFormula = CalcolaFormula(stat.Formula!, importiCalcolati);
+                    stat.DatiPerPeriodo[periodoKey].Importo = importoFormula;
+                    importiCalcolati[stat.Codice] = importoFormula;
+                }
+                catch
+                {
+                    stat.DatiPerPeriodo[periodoKey].Importo = 0;
+                }
+            }
+
+            // Calcola percentuali per questo periodo
+            CalcolaPercentualiPeriodo(statisticheMulti, periodoKey);
+        }
+
+        // 8. Calcola totali e percentuali totali
+        CalcolaTotaliMultiPeriodo(statisticheMulti);
+
+        return statisticheMulti;
+    }
+
+    /// <summary>
+    /// Calcola le percentuali per un singolo periodo
+    /// </summary>
+    private void CalcolaPercentualiPeriodo(List<BilancioStatisticaMultiPeriodo> statistiche, string periodoKey)
+    {
+        // Trova TOTALE FATTURATO per questo periodo
+        var totaleFatturato = statistiche
+            .FirstOrDefault(s => s.Descrizione.ToUpper().Contains("TOTALE FATTURATO"));
+
+        if (totaleFatturato == null || 
+            !totaleFatturato.DatiPerPeriodo.ContainsKey(periodoKey) ||
+            totaleFatturato.DatiPerPeriodo[periodoKey].Importo == 0)
+        {
+            // Nessun fatturato - percentuali a 0
+            foreach (var stat in statistiche)
+            {
+                if (stat.DatiPerPeriodo.ContainsKey(periodoKey))
+                {
+                    stat.DatiPerPeriodo[periodoKey].Percentuale = 0;
+                }
+            }
+            return;
+        }
+
+        decimal baseFatturato = Math.Abs(totaleFatturato.DatiPerPeriodo[periodoKey].Importo);
+
+        // Calcola percentuale per ogni voce
+        foreach (var stat in statistiche)
+        {
+            if (stat.DatiPerPeriodo.ContainsKey(periodoKey) && baseFatturato != 0)
+            {
+                stat.DatiPerPeriodo[periodoKey].Percentuale = 
+                    (Math.Abs(stat.DatiPerPeriodo[periodoKey].Importo) / baseFatturato) * 100;
+            }
+        }
+    }
+
+    /// <summary>
+    /// Calcola i totali complessivi e le percentuali totali
+    /// </summary>
+    private void CalcolaTotaliMultiPeriodo(List<BilancioStatisticaMultiPeriodo> statistiche)
+    {
+        // 1. Calcola somma importi per ogni voce
+        foreach (var stat in statistiche)
+        {
+            stat.ImportoTotale = stat.DatiPerPeriodo.Values.Sum(d => d.Importo);
+            stat.NumeroContiAssociatiTotali = stat.DatiPerPeriodo.Values.Sum(d => d.NumeroConti);
+
+            // Raccogli tutti i conti di tutti i periodi
+            stat.ContiAssociatiTutti = new List<ContoContabileAssociatoConPeriodo>();
+            foreach (var kvp in stat.DatiPerPeriodo)
+            {
+                foreach (var conto in kvp.Value.Conti)
+                {
+                    stat.ContiAssociatiTutti.Add(new ContoContabileAssociatoConPeriodo
+                    {
+                        Periodo = kvp.Value.PeriodoDisplay,
+                        Mese = kvp.Value.Mese,
+                        Anno = kvp.Value.Anno,
+                        CodiceConto = conto.CodiceConto,
+                        DescrizioneConto = conto.DescrizioneConto,
+                        Importo = conto.Importo
+                    });
+                }
+            }
+        }
+
+        // 2. Calcola percentuali totali
+        var totaleFatturato = statistiche
+            .FirstOrDefault(s => s.Descrizione.ToUpper().Contains("TOTALE FATTURATO"));
+
+        if (totaleFatturato == null || totaleFatturato.ImportoTotale == 0)
+        {
+            foreach (var stat in statistiche)
+            {
+                stat.PercentualeTotale = 0;
+            }
+            return;
+        }
+
+        decimal baseFatturatoTotale = Math.Abs(totaleFatturato.ImportoTotale);
+
+        foreach (var stat in statistiche)
+        {
+            if (baseFatturatoTotale != 0)
+            {
+                stat.PercentualeTotale = (Math.Abs(stat.ImportoTotale) / baseFatturatoTotale) * 100;
+            }
+            else
+            {
+                stat.PercentualeTotale = 0;
+            }
+        }
+    }
+
+    /// <summary>
+    /// Ottiene il nome del mese in italiano
+    /// </summary>
+    private string GetNomeMese(int mese)
+    {
+        return mese switch
+        {
+            1 => "Gen",
+            2 => "Feb",
+            3 => "Mar",
+            4 => "Apr",
+            5 => "Mag",
+            6 => "Giu",
+            7 => "Lug",
+            8 => "Ago",
+            9 => "Set",
+            10 => "Ott",
+            11 => "Nov",
+            12 => "Dic",
+            _ => ""
+        };
+    }
 }
 

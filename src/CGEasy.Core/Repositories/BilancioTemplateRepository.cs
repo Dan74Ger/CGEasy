@@ -87,12 +87,14 @@ public class BilancioTemplateRepository
 
     public int DeleteByClienteAndPeriodo(int clienteId, int mese, int anno)
     {
-        var toDelete = _context.BilancioTemplate
-            .Find(b => b.ClienteId == clienteId && b.Mese == mese && b.Anno == anno)
-            .Select(b => b.Id)
-            .ToList();
-
-        return DeleteMultiple(toDelete);
+        // ✅ Usa DeleteMany che è molto più efficiente e non blocca il database
+        var deleted = _context.BilancioTemplate.DeleteMany(b => 
+            b.ClienteId == clienteId && 
+            b.Mese == mese && 
+            b.Anno == anno);
+        
+        _context.Checkpoint(); // Forza il flush su disco
+        return deleted;
     }
 
     public List<int> GetDistinctAnni()

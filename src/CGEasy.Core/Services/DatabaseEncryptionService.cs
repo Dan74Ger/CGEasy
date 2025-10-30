@@ -19,9 +19,20 @@ public class DatabaseEncryptionService
     /// </summary>
     private const string MASTER_PASSWORD = "Woodstockac@74";
     
+    /// <summary>
+    /// Percorso del file chiave - nella stessa cartella del database
+    /// </summary>
     private static string PasswordFilePath => 
-        Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.CommonApplicationData), 
-                     "CGEasy", PASSWORD_FILE);
+        Path.Combine(GetDatabaseDirectory(), PASSWORD_FILE);
+    
+    /// <summary>
+    /// Ottiene la cartella dove si trova il database
+    /// </summary>
+    private static string GetDatabaseDirectory()
+    {
+        // Usa sempre la cartella di default del database
+        return @"C:\devcg-group\dbtest_prova";
+    }
 
     /// <summary>
     /// Ottiene la Password Master (solo per verifiche interne)

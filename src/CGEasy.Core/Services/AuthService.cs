@@ -50,7 +50,7 @@ namespace CGEasy.Core.Services
                 }
 
                 File.AppendAllText(logFile, $"✅ Utente trovato: ID={utente.Id}, Username={utente.Username}\n");
-                File.AppendAllText(logFile, $"Hash nel DB: {utente.PasswordHash.Substring(0, 30)}...\n");
+                File.AppendAllText(logFile, $"Hash nel DB: {(string.IsNullOrEmpty(utente.PasswordHash) ? "VUOTO!" : utente.PasswordHash.Substring(0, Math.Min(30, utente.PasswordHash.Length)))}...\n");
 
                 // Verifica se utente è attivo
                 if (!utente.Attivo)

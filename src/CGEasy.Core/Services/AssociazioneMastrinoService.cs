@@ -92,16 +92,21 @@ public class AssociazioneMastrinoService
     /// </summary>
     public int CreaAssociazione(AssociazioneMastrino associazione)
     {
-        // Verifica se esiste già un'associazione per questo cliente/periodo
-        var esistente = _repository.GetByClienteAndPeriodo(
-            associazione.ClienteId, 
-            associazione.Mese, 
-            associazione.Anno);
-
-        if (esistente != null)
+        // ✅ IMPORTANTE: Verifica se esiste già un'associazione per questo Cliente+Template
+        // Un cliente può avere UNA SOLA associazione per template (indipendente dal periodo!)
+        if (associazione.TemplateId.HasValue)
         {
-            throw new InvalidOperationException(
-                $"Esiste già un'associazione per {associazione.ClienteNome} - {associazione.PeriodoDisplay}");
+            var esistente = _repository.GetByClienteAndTemplate(
+                associazione.ClienteId, 
+                associazione.TemplateId.Value);
+
+            if (esistente != null)
+            {
+                throw new InvalidOperationException(
+                    $"Esiste già un'associazione per {associazione.ClienteNome} con questo template.\n\n" +
+                    $"Un cliente può avere una sola associazione per template.\n" +
+                    $"Modifica l'associazione esistente (ID: {esistente.Id}) invece di crearne una nuova.");
+            }
         }
 
         associazione.DataCreazione = DateTime.Now;
@@ -168,8 +173,40 @@ public class AssociazioneMastrinoService
     }
 
     /// <summary>
-    /// Carica mastrini del bilancio contabile per mappatura
+    /// ✅ NUOVO: Carica TUTTI i mastrini di TUTTI i bilanci del cliente (unificati per codice)
+    /// Questo permette di avere un'unica associazione valida per tutti i periodi
     /// </summary>
+    public List<AssociazioneMastrinoDettaglio> CaricaMastriniDaBilancio(int clienteId)
+    {
+        // Carica TUTTI i bilanci contabili del cliente (tutti i periodi)
+        var tuttiBilanci = _bilancioRepository.GetAll()
+            .Where(b => b.ClienteId == clienteId)
+            .ToList();
+        
+        // Raggruppa per CodiceMastrino e somma gli importi
+        var mastriniUnificati = tuttiBilanci
+            .GroupBy(b => b.CodiceMastrino)
+            .Select(g => new AssociazioneMastrinoDettaglio
+            {
+                CodiceMastrino = g.Key,
+                DescrizioneMastrino = g.First().DescrizioneMastrino, // Prende la prima descrizione trovata
+                Importo = g.Sum(b => b.Importo), // Somma gli importi di tutti i periodi
+                TemplateVoceId = null,
+                TemplateCodice = null,
+                TemplateDescrizione = null,
+                TemplateSegno = null
+            })
+            .OrderBy(x => x.CodiceMastrino)
+            .ToList();
+
+        return mastriniUnificati;
+    }
+
+    /// <summary>
+    /// ⚠️ DEPRECATO: Usare CaricaMastriniDaBilancio(clienteId) per caricare tutti i periodi
+    /// Carica mastrini del bilancio contabile per mappatura (singolo periodo)
+    /// </summary>
+    [Obsolete("Usare CaricaMastriniDaBilancio(clienteId) per caricare tutti i periodi del cliente")]
     public List<AssociazioneMastrinoDettaglio> CaricaMastriniDaBilancio(int clienteId, int mese, int anno)
     {
         var bilanci = _bilancioRepository.GetByClienteAndPeriodo(clienteId, mese, anno);
@@ -194,34 +231,83 @@ public class AssociazioneMastrinoService
     }
 
     /// <summary>
-    /// Salva dettagli associazione
+    /// Salva dettagli associazione (con gestione robusta per modalità Shared)
     /// </summary>
     public void SalvaDettagli(int associazioneId, List<AssociazioneMastrinoDettaglio> dettagli)
     {
-        // Elimina i dettagli esistenti
-        _repository.DeleteDettagliByAssociazione(associazioneId);
+        int maxRetries = 3;
+        int attempt = 0;
+        Exception? lastException = null;
 
-        // Inserisce i nuovi dettagli
-        foreach (var dettaglio in dettagli)
+        while (attempt < maxRetries)
         {
-            dettaglio.AssociazioneId = associazioneId;
-            _repository.InsertDettaglio(dettaglio);
+            try
+            {
+                // Verifica che il context sia ancora valido
+                if (_repository == null)
+                {
+                    throw new InvalidOperationException("Repository non inizializzato");
+                }
+
+                // Elimina i dettagli esistenti
+                _repository.DeleteDettagliByAssociazione(associazioneId);
+
+                // Inserisce i nuovi dettagli
+                foreach (var dettaglio in dettagli)
+                {
+                    dettaglio.AssociazioneId = associazioneId;
+                    _repository.InsertDettaglio(dettaglio);
+                }
+
+                // Aggiorna il numero di mappature nella testata
+                var associazione = _repository.GetById(associazioneId);
+                if (associazione != null)
+                {
+                    associazione.NumeroMappature = dettagli.Count(x => x.IsAssociato);
+                    _repository.Update(associazione);
+                }
+
+                // Audit log
+                _auditService.LogFromSession(
+                    AuditAction.Update,
+                    "AssociazioneMastrino",
+                    associazioneId,
+                    $"Salvate {dettagli.Count} mappature");
+
+                // Operazione riuscita
+                return;
+            }
+            catch (LiteDB.LiteException ex) when (ex.Message.Contains("disposed") || ex.Message.Contains("closed"))
+            {
+                // Database disposed/closed - riprova
+                lastException = ex;
+                attempt++;
+                if (attempt < maxRetries)
+                {
+                    System.Threading.Thread.Sleep(200 * attempt); // Attendi più a lungo
+                }
+            }
+            catch (ObjectDisposedException ex)
+            {
+                // Context disposed - riprova
+                lastException = ex;
+                attempt++;
+                if (attempt < maxRetries)
+                {
+                    System.Threading.Thread.Sleep(200 * attempt);
+                }
+            }
+            catch (Exception)
+            {
+                // Altri errori - propaga immediatamente
+                throw;
+            }
         }
 
-        // Aggiorna il numero di mappature nella testata
-        var associazione = _repository.GetById(associazioneId);
-        if (associazione != null)
-        {
-            associazione.NumeroMappature = dettagli.Count(x => x.IsAssociato);
-            _repository.Update(associazione);
-        }
-
-        // Audit log
-        _auditService.LogFromSession(
-            AuditAction.Update,
-            "AssociazioneMastrino",
-            associazioneId,
-            $"Salvate {dettagli.Count} mappature");
+        // Se arriviamo qui, tutti i tentativi sono falliti
+        throw new InvalidOperationException(
+            $"Impossibile salvare i dettagli dopo {maxRetries} tentativi. Database potrebbe essere chiuso.",
+            lastException);
     }
 
     /// <summary>

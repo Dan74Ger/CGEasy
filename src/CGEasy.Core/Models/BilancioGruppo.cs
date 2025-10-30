@@ -1,6 +1,9 @@
+using System.ComponentModel;
+using System.Runtime.CompilerServices;
+
 namespace CGEasy.Core.Models;
 
-public class BilancioGruppo
+public class BilancioGruppo : INotifyPropertyChanged
 {
     public int ClienteId { get; set; }
     public string ClienteNome { get; set; } = string.Empty;
@@ -11,6 +14,21 @@ public class BilancioGruppo
     public string ImportedByName { get; set; } = string.Empty;
     public int NumeroRighe { get; set; }
     public decimal TotaleImporti { get; set; }
+    
+    // Proprietà per checkbox selezione
+    private bool _isSelected;
+    public bool IsSelected
+    {
+        get => _isSelected;
+        set
+        {
+            if (_isSelected != value)
+            {
+                _isSelected = value;
+                OnPropertyChanged();
+            }
+        }
+    }
     
     // Proprietà calcolate
     public string PeriodoDisplay => $"{MeseNome} {Anno}";
@@ -31,6 +49,13 @@ public class BilancioGruppo
         _ => ""
     };
     public string TotaleFormatted => TotaleImporti.ToString("C2");
+
+    public event PropertyChangedEventHandler? PropertyChanged;
+    
+    protected void OnPropertyChanged([CallerMemberName] string? propertyName = null)
+    {
+        PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
+    }
 }
 
 

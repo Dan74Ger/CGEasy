@@ -90,6 +90,17 @@ public class AssociazioneMastrinoRepository : IRepository<AssociazioneMastrino>
     }
 
     /// <summary>
+    /// ✅ NUOVO: Ottiene associazione per cliente e template (indipendente dal periodo!)
+    /// Un cliente può avere UNA SOLA associazione per template
+    /// </summary>
+    public AssociazioneMastrino? GetByClienteAndTemplate(int clienteId, int templateId)
+    {
+        return _context.AssociazioniMastrini.FindOne(x => 
+            x.ClienteId == clienteId && 
+            x.TemplateId == templateId);
+    }
+
+    /// <summary>
     /// Ottiene dettagli associazione
     /// </summary>
     public IEnumerable<AssociazioneMastrinoDettaglio> GetDettagli(int associazioneId)
@@ -126,13 +137,10 @@ public class AssociazioneMastrinoRepository : IRepository<AssociazioneMastrino>
     /// </summary>
     public int DeleteDettagliByAssociazione(int associazioneId)
     {
-        var dettagli = GetDettagli(associazioneId);
-        int deleted = 0;
-        foreach (var dettaglio in dettagli)
-        {
-            if (DeleteDettaglio(dettaglio.Id))
-                deleted++;
-        }
+        // ✅ Usa DeleteMany che è molto più efficiente (una singola operazione batch)
+        var deleted = _context.AssociazioniMastriniDettagli.DeleteMany(d => 
+            d.AssociazioneId == associazioneId);
+        
         return deleted;
     }
 

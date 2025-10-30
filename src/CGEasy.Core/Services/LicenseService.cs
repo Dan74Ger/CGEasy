@@ -18,10 +18,28 @@ namespace CGEasy.Core.Services;
 public class LicenseService
 {
     private const string LICENSE_FILE = "licenses.json";
-    private static readonly string LICENSE_PATH = Path.Combine(
-        Environment.GetFolderPath(Environment.SpecialFolder.CommonDocuments),
-        "CGEasy",
-        LICENSE_FILE);
+    
+    /// <summary>
+    /// Ottiene il percorso del file licenses.json nella stessa cartella del database
+    /// Se il database è su server (\\SERVER\Share\cgeasy.db), anche licenses.json sarà lì
+    /// </summary>
+    private static string GetLicensePath()
+    {
+        // Ottiene il percorso del database (configurato o default)
+        var dbPath = LiteDbContext.DefaultDatabasePath;
+        var dbDirectory = Path.GetDirectoryName(dbPath);
+        
+        if (string.IsNullOrEmpty(dbDirectory))
+        {
+            // Fallback al percorso default se qualcosa va storto
+            return Path.Combine(
+                Environment.GetFolderPath(Environment.SpecialFolder.CommonDocuments),
+                "CGEasy",
+                LICENSE_FILE);
+        }
+        
+        return Path.Combine(dbDirectory, LICENSE_FILE);
+    }
 
     private const string SECRET_KEY = "CGEasy2025-TodoStudio-SecretKey-DottGeronDaniele";
 
@@ -55,9 +73,10 @@ public class LicenseService
     {
         try
         {
-            if (File.Exists(LICENSE_PATH))
+            var licensePath = GetLicensePath();
+            if (File.Exists(licensePath))
             {
-                var json = File.ReadAllText(LICENSE_PATH);
+                var json = File.ReadAllText(licensePath);
                 var licenses = JsonSerializer.Deserialize<Dictionary<string, string>>(json);
                 if (licenses != null)
                 {
@@ -91,7 +110,8 @@ public class LicenseService
     {
         try
         {
-            var directory = Path.GetDirectoryName(LICENSE_PATH);
+            var licensePath = GetLicensePath();
+            var directory = Path.GetDirectoryName(licensePath);
             if (!string.IsNullOrEmpty(directory) && !Directory.Exists(directory))
             {
                 Directory.CreateDirectory(directory);
@@ -101,7 +121,7 @@ public class LicenseService
             {
                 WriteIndented = true
             });
-            File.WriteAllText(LICENSE_PATH, json);
+            File.WriteAllText(licensePath, json);
         }
         catch
         {
