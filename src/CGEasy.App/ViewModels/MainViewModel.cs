@@ -256,9 +256,28 @@ public partial class MainViewModel : ObservableObject
             return;
         }
 
-        PageTitle = "Controllo Gestione";
-        // TODO: implementare quando sara pronto il modulo
-        MessageBox.Show("Modulo Controllo Gestione in sviluppo...", "Info", MessageBoxButton.OK, MessageBoxImage.Information);
+        // Verifica licenza modulo
+        if (!LicenseService.IsControlloGestioneActive())
+        {
+            MessageBox.Show(
+                "MODULO NON ATTIVATO\n\n" +
+                "Il modulo Controllo di Gestione richiede una licenza.\n\n" +
+                "Per attivarlo:\n" +
+                "1. Vai in Impostazioni > Sistema\n" +
+                "2. Inserisci la chiave di attivazione\n" +
+                "3. Riavvia l'applicazione\n\n" +
+                "Contatta l'amministratore per ricevere la chiave.",
+                "Modulo Controllo di Gestione",
+                MessageBoxButton.OK,
+                MessageBoxImage.Warning);
+            return;
+        }
+
+        PageTitle = "Controllo di Gestione";
+        
+        // Apri finestra Controllo di Gestione
+        var controlloGestioneWindow = new Views.ControlloGestioneWindow();
+        controlloGestioneWindow.Show();
     }
 
     [RelayCommand]

@@ -111,6 +111,13 @@ namespace CGEasy.Core.Data
             mapper.Entity<AssociazioneMastrinoDettaglio>().Id(x => x.Id, autoId: true);
             mapper.Entity<Argomento>().Id(x => x.Id, autoId: true);
             mapper.Entity<Circolare>().Id(x => x.Id, autoId: true);
+            
+            // Banche
+            mapper.Entity<Banca>().Id(x => x.Id, autoId: true);
+            mapper.Entity<BancaIncasso>().Id(x => x.Id, autoId: true);
+            mapper.Entity<BancaPagamento>().Id(x => x.Id, autoId: true);
+            mapper.Entity<BancaUtilizzoAnticipo>().Id(x => x.Id, autoId: true);
+            mapper.Entity<BancaSaldoGiornaliero>().Id(x => x.Id, autoId: true);
 
             // Connection string per accesso condiviso (multi-utente)
             var connectionString = new ConnectionString
@@ -215,6 +222,39 @@ namespace CGEasy.Core.Data
                 circolariCol.EnsureIndex(x => x.Anno);
                 circolariCol.EnsureIndex(x => x.Descrizione);
                 circolariCol.EnsureIndex(x => x.DataImportazione);
+
+                // Banche
+                var bancheCol = _database.GetCollection<Banca>("banche");
+                bancheCol.EnsureIndex(x => x.NomeBanca);
+                bancheCol.EnsureIndex(x => x.DataCreazione);
+
+                // Banca Incassi
+                var bancaIncassiCol = _database.GetCollection<BancaIncasso>("banca_incassi");
+                bancaIncassiCol.EnsureIndex(x => x.BancaId);
+                bancaIncassiCol.EnsureIndex(x => x.Anno);
+                bancaIncassiCol.EnsureIndex(x => x.Mese);
+                bancaIncassiCol.EnsureIndex(x => x.DataScadenza);
+                bancaIncassiCol.EnsureIndex(x => x.Incassato);
+
+                // Banca Pagamenti
+                var bancaPagamentiCol = _database.GetCollection<BancaPagamento>("banca_pagamenti");
+                bancaPagamentiCol.EnsureIndex(x => x.BancaId);
+                bancaPagamentiCol.EnsureIndex(x => x.Anno);
+                bancaPagamentiCol.EnsureIndex(x => x.Mese);
+                bancaPagamentiCol.EnsureIndex(x => x.DataScadenza);
+                bancaPagamentiCol.EnsureIndex(x => x.Pagato);
+
+                // Banca Utilizzo Anticipo
+                var bancaUtilizzoAnticipoCol = _database.GetCollection<BancaUtilizzoAnticipo>("banca_utilizzo_anticipo");
+                bancaUtilizzoAnticipoCol.EnsureIndex(x => x.BancaId);
+                bancaUtilizzoAnticipoCol.EnsureIndex(x => x.DataInizioUtilizzo);
+                bancaUtilizzoAnticipoCol.EnsureIndex(x => x.DataScadenzaUtilizzo);
+                bancaUtilizzoAnticipoCol.EnsureIndex(x => x.Rimborsato);
+
+                // Banca Saldo Giornaliero
+                var bancaSaldoGiornalieroCol = _database.GetCollection<BancaSaldoGiornaliero>("banca_saldo_giornaliero");
+                bancaSaldoGiornalieroCol.EnsureIndex(x => x.BancaId);
+                bancaSaldoGiornalieroCol.EnsureIndex(x => x.Data);
             }
         }
 
@@ -307,6 +347,36 @@ namespace CGEasy.Core.Data
         /// </summary>
         public ILiteCollection<Circolare> Circolari =>
             _database.GetCollection<Circolare>("circolari");
+
+        /// <summary>
+        /// Collection Banche
+        /// </summary>
+        public ILiteCollection<Banca> Banche =>
+            _database.GetCollection<Banca>("banche");
+
+        /// <summary>
+        /// Collection Banca Incassi
+        /// </summary>
+        public ILiteCollection<BancaIncasso> BancaIncassi =>
+            _database.GetCollection<BancaIncasso>("banca_incassi");
+
+        /// <summary>
+        /// Collection Banca Pagamenti
+        /// </summary>
+        public ILiteCollection<BancaPagamento> BancaPagamenti =>
+            _database.GetCollection<BancaPagamento>("banca_pagamenti");
+
+        /// <summary>
+        /// Collection Banca Utilizzo Anticipo
+        /// </summary>
+        public ILiteCollection<BancaUtilizzoAnticipo> BancaUtilizzoAnticipo =>
+            _database.GetCollection<BancaUtilizzoAnticipo>("banca_utilizzo_anticipo");
+
+        /// <summary>
+        /// Collection Banca Saldo Giornaliero
+        /// </summary>
+        public ILiteCollection<BancaSaldoGiornaliero> BancaSaldoGiornaliero =>
+            _database.GetCollection<BancaSaldoGiornaliero>("banca_saldo_giornaliero");
 
         // ===== UTILITY METHODS =====
 
