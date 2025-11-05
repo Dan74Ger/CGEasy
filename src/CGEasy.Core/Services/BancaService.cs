@@ -102,35 +102,88 @@ public class BancaService
 
     /// <summary>
     /// Calcola il fido residuo disponibile per una banca
-    /// Fido Residuo = Fido Accordato - Utilizzo Attivo
+    /// Il fido viene utilizzato SOLO quando il saldo corrente diventa negativo
+    /// Se Saldo > 0: Fido Residuo = Fido Accordato (tutto disponibile)
+    /// Se Saldo < 0: Fido Residuo = Fido Accordato - |Saldo Negativo|
     /// </summary>
     public decimal GetFidoResiduo(int bancaId)
     {
         var banca = _bancaRepo.GetById(bancaId);
         if (banca == null) return 0;
 
-        var utilizzoTotale = _anticipoRepo.GetTotaleUtilizziAttivi(bancaId);
-        return banca.FidoCCAccordato - utilizzoTotale;
+        var saldoCorrente = banca.SaldoDelGiorno;
+        
+        // Se il saldo è positivo o zero, tutto il fido è disponibile
+        if (saldoCorrente >= 0)
+        {
+            return banca.FidoCCAccordato;
+        }
+        
+        // Se il saldo è negativo, sto già usando il fido
+        // Fido residuo = Fido accordato - importo già utilizzato (valore assoluto del saldo negativo)
+        var fidoGiaUtilizzato = Math.Abs(saldoCorrente);
+        return banca.FidoCCAccordato - fidoGiaUtilizzato;
     }
 
     /// <summary>
     /// Verifica se c'è un superamento del fido per una banca
+    /// Il fido è superato quando: Saldo < 0 E |Saldo| > Fido Accordato
     /// </summary>
     public bool IsFidoSuperato(int bancaId)
     {
-        return GetFidoResiduo(bancaId) < 0;
+        var banca = _bancaRepo.GetById(bancaId);
+        if (banca == null) return false;
+        
+        var saldoCorrente = banca.SaldoDelGiorno;
+        
+        // Se il saldo è positivo, non sto usando il fido
+        if (saldoCorrente >= 0) return false;
+        
+        // Se il saldo è negativo, verifico se supera il fido accordato
+        return Math.Abs(saldoCorrente) > banca.FidoCCAccordato;
     }
 
     /// <summary>
-    /// Calcola la percentuale di utilizzo del fido
+    /// Calcola la percentuale di utilizzo del fido C/C
+    /// Percentuale = (Utilizzo Fido / Fido Accordato) × 100
+    /// Utilizzo Fido = |Saldo Negativo| se Saldo < 0, altrimenti 0
     /// </summary>
-    public decimal GetPercentualeUtilizzoFido(int bancaId)
+    public decimal GetPercentualeUtilizzoFidoCC(int bancaId)
     {
         var banca = _bancaRepo.GetById(bancaId);
         if (banca == null || banca.FidoCCAccordato == 0) return 0;
 
-        var utilizzoTotale = _anticipoRepo.GetTotaleUtilizziAttivi(bancaId);
-        return (utilizzoTotale / banca.FidoCCAccordato) * 100;
+        var saldoCorrente = banca.SaldoDelGiorno;
+        
+        // Se il saldo è positivo, non sto usando il fido C/C
+        if (saldoCorrente >= 0) return 0;
+        
+        // Calcola quanto fido C/C sto usando
+        var fidoUtilizzato = Math.Abs(saldoCorrente);
+        return (fidoUtilizzato / banca.FidoCCAccordato) * 100;
+    }
+
+    /// <summary>
+    /// Calcola la percentuale di utilizzo degli Anticipi Fatture/SBF
+    /// Percentuale = (Anticipi Utilizzati / Massimale Anticipi) × 100
+    /// </summary>
+    public decimal GetPercentualeUtilizzoAnticipo(int bancaId)
+    {
+        var banca = _bancaRepo.GetById(bancaId);
+        if (banca == null || banca.AnticipoFattureMassimo == 0) return 0;
+
+        var anticipiUtilizzati = _anticipoRepo.GetTotaleUtilizziAttivi(bancaId);
+        return (anticipiUtilizzati / banca.AnticipoFattureMassimo) * 100;
+    }
+
+    /// <summary>
+    /// DEPRECATO: Usa GetPercentualeUtilizzoFidoCC o GetPercentualeUtilizzoAnticipo
+    /// Mantenuto per retrocompatibilità
+    /// </summary>
+    public decimal GetPercentualeUtilizzoFido(int bancaId)
+    {
+        // Per default restituisce la percentuale degli anticipi
+        return GetPercentualeUtilizzoAnticipo(bancaId);
     }
 
     /// <summary>
@@ -174,7 +227,8 @@ public class BancaService
         var giorni = (dataFine - dataInizio).Days;
         if (giorni <= 0) return 0;
 
-        return importo * (banca.InteresseAnticipoFatture / 100) * (giorni / 365m);
+        // Formula: (Importo × Tasso% × Giorni) / 36500
+        return importo * banca.InteresseAnticipoFatture * giorni / 36500m;
     }
 
     /// <summary>
@@ -202,8 +256,54 @@ public class BancaService
     /// </summary>
     public decimal GetTotaleInteressiAttivi(int bancaId)
     {
-        var anticipiAttivi = _anticipoRepo.GetAttivi(bancaId);
-        return anticipiAttivi.Sum(a => CalcolaInteressiUtilizzo(a.Id));
+        // Calcola interessi sugli anticipi delle fatture (BancaIncasso)
+        return GetTotaleInteressiAnticipiIncassi(bancaId);
+    }
+
+    /// <summary>
+    /// Calcola il totale interessi maturati sugli anticipi delle fatture (BancaIncasso)
+    /// per una specifica banca
+    /// </summary>
+    public decimal GetTotaleInteressiAnticipiIncassi(int bancaId)
+    {
+        var banca = _bancaRepo.GetById(bancaId);
+        if (banca == null) return 0;
+
+        decimal totaleInteressi = 0;
+
+        // Ottieni tutti gli incassi con anticipo (anche quelli già incassati per calcolare interessi passati)
+        var incassiConAnticipo = _incassoRepo.GetAll()
+            .Where(i => i.BancaId == bancaId && 
+                        i.ImportoAnticipato > 0 && 
+                        i.DataInizioAnticipo.HasValue)
+            .ToList();
+
+        foreach (var incasso in incassiConAnticipo)
+        {
+            // Calcola giorni di utilizzo anticipo
+            var dataInizio = incasso.DataInizioAnticipo!.Value;
+            DateTime dataFine;
+
+            if (incasso.Incassato && incasso.DataIncassoEffettivo.HasValue)
+            {
+                // Se incassato, calcola interessi fino alla data di incasso effettivo
+                dataFine = incasso.DataIncassoEffettivo.Value;
+            }
+            else
+            {
+                // Se non ancora incassato, calcola interessi fino ad oggi
+                dataFine = DateTime.Now;
+            }
+
+            var giorni = (dataFine - dataInizio).Days;
+            if (giorni <= 0) continue;
+
+            // Formula: (ImportoAnticipato × Tasso% × Giorni) / 36500
+            var interessiIncasso = incasso.ImportoAnticipato * banca.InteresseAnticipoFatture * giorni / 36500m;
+            totaleInteressi += interessiIncasso;
+        }
+
+        return totaleInteressi;
     }
 
     #endregion
@@ -248,17 +348,57 @@ public class BancaService
     {
         var banche = _bancaRepo.GetAll();
         var scadenziari = new List<ScadenziarioBanca>();
+        var movimentiConsolidati = new List<MovimentoScadenziario>();
 
         foreach (var banca in banche)
         {
-            scadenziari.Add(GetScadenziario(banca.Id, dataInizio, dataFine));
+            var scadenziario = GetScadenziario(banca.Id, dataInizio, dataFine);
+            scadenziari.Add(scadenziario);
+
+            // Aggiungi incassi alla lista consolidata
+            foreach (var incasso in scadenziario.Incassi)
+            {
+                movimentiConsolidati.Add(new MovimentoScadenziario
+                {
+                    NomeBanca = banca.NomeBanca,
+                    Tipo = "Incasso",
+                    ClienteFornitore = incasso.NomeCliente,
+                    DataScadenza = incasso.DataScadenza,
+                    Importo = incasso.Importo,
+                    NumeroFattura = incasso.NumeroFatturaCliente ?? string.Empty,
+                    DataFattura = incasso.DataFatturaCliente,
+                    Anno = incasso.Anno,
+                    Mese = incasso.Mese
+                });
+            }
+
+            // Aggiungi pagamenti alla lista consolidata
+            foreach (var pagamento in scadenziario.Pagamenti)
+            {
+                movimentiConsolidati.Add(new MovimentoScadenziario
+                {
+                    NomeBanca = banca.NomeBanca,
+                    Tipo = "Pagamento",
+                    ClienteFornitore = pagamento.NomeFornitore,
+                    DataScadenza = pagamento.DataScadenza,
+                    Importo = pagamento.Importo,
+                    NumeroFattura = pagamento.NumeroFatturaFornitore ?? string.Empty,
+                    DataFattura = pagamento.DataFatturaFornitore,
+                    Anno = pagamento.Anno,
+                    Mese = pagamento.Mese
+                });
+            }
         }
+
+        // Ordina per data scadenza
+        movimentiConsolidati = movimentiConsolidati.OrderBy(m => m.DataScadenza).ToList();
 
         return new ScadenziarioConsolidato
         {
             DataInizio = dataInizio ?? DateTime.Now,
             DataFine = dataFine ?? DateTime.Now.AddMonths(3),
             ScadenziariBanche = scadenziari,
+            MovimentiConsolidati = movimentiConsolidati,
             TotaleIncassiConsolidato = scadenziari.Sum(s => s.TotaleIncassi),
             TotalePagamentiConsolidato = scadenziari.Sum(s => s.TotalePagamenti)
         };
@@ -333,6 +473,20 @@ public class BancaService
                 Tipo = TipoAlertBanca.SaldoNegativo,
                 Gravita = GravitaAlert.Alta,
                 Messaggio = $"⚠️ Saldo negativo: {banca.SaldoDelGiorno:C}",
+                BancaId = bancaId,
+                NomeBanca = banca.NomeBanca
+            });
+        }
+
+        // Alert superamento massimale anticipo
+        var anticipoResiduo = GetAnticipoResiduoDisponibile(bancaId);
+        if (anticipoResiduo < 0)
+        {
+            alerts.Add(new AlertBanca
+            {
+                Tipo = TipoAlertBanca.SuperamentoFido, // Riusiamo questo tipo o creiamo uno nuovo
+                Gravita = GravitaAlert.Alta,
+                Messaggio = $"⚠️ ANTICIPO FATTURE SUPERATO! Utilizzo eccedente di {Math.Abs(anticipoResiduo):C}",
                 BancaId = bancaId,
                 NomeBanca = banca.NomeBanca
             });
@@ -413,13 +567,31 @@ public class BancaService
     {
         var banche = _bancaRepo.GetAll();
 
+        // Calcola fido C/C utilizzato (solo per banche con saldo negativo)
+        decimal fidoCCUtilizzato = 0;
+        foreach (var banca in banche)
+        {
+            if (banca.SaldoDelGiorno < 0)
+            {
+                fidoCCUtilizzato += Math.Abs(banca.SaldoDelGiorno);
+            }
+        }
+
+        // Calcola totale anticipi utilizzati dalla somma degli ImportoAnticipato degli incassi NON ancora incassati
+        decimal anticipoTotaleUtilizzato = 0;
+        foreach (var banca in banche)
+        {
+            var incassi = _incassoRepo.GetAll().Where(i => i.BancaId == banca.Id && !i.Incassato);
+            anticipoTotaleUtilizzato += incassi.Sum(i => i.ImportoAnticipato);
+        }
+
         return new RiepilogoBanche
         {
             SaldoTotale = banche.Sum(b => b.SaldoDelGiorno),
             FidoTotaleAccordato = banche.Sum(b => b.FidoCCAccordato),
-            FidoTotaleUtilizzato = banche.Sum(b => _anticipoRepo.GetTotaleUtilizziAttivi(b.Id)),
+            FidoTotaleUtilizzato = fidoCCUtilizzato, // Fido C/C utilizzato (saldi negativi)
             AnticipoTotaleMassimo = banche.Sum(b => b.AnticipoFattureMassimo),
-            AnticipoTotaleUtilizzato = banche.Sum(b => _anticipoRepo.GetTotaleUtilizziAttivi(b.Id)),
+            AnticipoTotaleUtilizzato = anticipoTotaleUtilizzato, // Basato sugli incassi
             InteressiTotaliMaturati = banche.Sum(b => GetTotaleInteressiAttivi(b.Id)),
             NumeroBanche = banche.Count
         };
@@ -453,9 +625,26 @@ public class ScadenziarioConsolidato
     public DateTime DataInizio { get; set; }
     public DateTime DataFine { get; set; }
     public List<ScadenziarioBanca> ScadenziariBanche { get; set; } = new();
+    public List<MovimentoScadenziario> MovimentiConsolidati { get; set; } = new();
     public decimal TotaleIncassiConsolidato { get; set; }
     public decimal TotalePagamentiConsolidato { get; set; }
     public decimal SaldoNettoConsolidato => TotaleIncassiConsolidato - TotalePagamentiConsolidato;
+}
+
+/// <summary>
+/// Rappresenta un singolo movimento (incasso o pagamento) nello scadenziario consolidato
+/// </summary>
+public class MovimentoScadenziario
+{
+    public string NomeBanca { get; set; } = string.Empty;
+    public string Tipo { get; set; } = string.Empty; // "Incasso" o "Pagamento"
+    public string ClienteFornitore { get; set; } = string.Empty;
+    public DateTime DataScadenza { get; set; }
+    public decimal Importo { get; set; }
+    public string NumeroFattura { get; set; } = string.Empty;
+    public DateTime? DataFattura { get; set; }
+    public int Anno { get; set; }
+    public int Mese { get; set; }
 }
 
 /// <summary>

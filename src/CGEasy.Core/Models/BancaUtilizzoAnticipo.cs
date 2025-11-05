@@ -15,7 +15,17 @@ public class BancaUtilizzoAnticipo
     public int BancaId { get; set; }
     
     /// <summary>
-    /// Importo dell'anticipo utilizzato
+    /// Fatturato su cui si basa l'anticipo
+    /// </summary>
+    public decimal Fatturato { get; set; }
+    
+    /// <summary>
+    /// Percentuale di anticipo sul fatturato (es: 80 per 80%)
+    /// </summary>
+    public decimal PercentualeAnticipo { get; set; }
+    
+    /// <summary>
+    /// Importo dell'anticipo utilizzato (calcolato: Fatturato * PercentualeAnticipo / 100)
     /// </summary>
     public decimal ImportoUtilizzo { get; set; }
     

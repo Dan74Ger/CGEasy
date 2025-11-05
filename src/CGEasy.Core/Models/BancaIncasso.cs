@@ -30,9 +30,34 @@ public class BancaIncasso
     public int Mese { get; set; }
     
     /// <summary>
-    /// Importo dell'incasso
+    /// Importo della fattura
     /// </summary>
     public decimal Importo { get; set; }
+    
+    /// <summary>
+    /// Percentuale di anticipo richiesta (0-100)
+    /// </summary>
+    public decimal PercentualeAnticipo { get; set; }
+    
+    /// <summary>
+    /// Importo anticipato calcolato (Importo * PercentualeAnticipo / 100)
+    /// </summary>
+    public decimal ImportoAnticipato => Importo * (PercentualeAnticipo / 100);
+    
+    /// <summary>
+    /// Data inizio anticipo
+    /// </summary>
+    public DateTime? DataInizioAnticipo { get; set; }
+    
+    /// <summary>
+    /// Data scadenza anticipo
+    /// </summary>
+    public DateTime? DataScadenzaAnticipo { get; set; }
+    
+    /// <summary>
+    /// Importo fattura a scadenza (Importo - ImportoAnticipato)
+    /// </summary>
+    public decimal ImportoFatturaScadenza => Importo - ImportoAnticipato;
     
     /// <summary>
     /// Flag che indica se l'importo è stato incassato
@@ -40,7 +65,7 @@ public class BancaIncasso
     public bool Incassato { get; set; }
     
     /// <summary>
-    /// Data di scadenza prevista per l'incasso
+    /// Data di scadenza prevista per l'incasso (fattura)
     /// </summary>
     public DateTime DataScadenza { get; set; }
     
@@ -48,6 +73,16 @@ public class BancaIncasso
     /// Data effettiva di incasso (se avvenuto)
     /// </summary>
     public DateTime? DataIncassoEffettivo { get; set; }
+    
+    /// <summary>
+    /// Numero fattura cliente (opzionale)
+    /// </summary>
+    public string? NumeroFatturaCliente { get; set; }
+    
+    /// <summary>
+    /// Data fattura cliente (opzionale)
+    /// </summary>
+    public DateTime? DataFatturaCliente { get; set; }
     
     /// <summary>
     /// Note aggiuntive
