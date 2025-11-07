@@ -1,115 +1,215 @@
-; CGEasy - Script Installer Inno Setup
-; Versione: 1.0.0
-; Data: 2025-10-27
+; ========================================
+; Script Inno Setup per CGEasy
+; ========================================
+; Questo script crea un installer professionale per CGEasy
+; Include: applicazione, database, licenze, configurazione
 
 #define MyAppName "CGEasy"
 #define MyAppVersion "1.0.0"
-#define MyAppPublisher "CG Group - Dott. Geron Daniele Commercialista e Revisore legale dei Conti"
-#define MyAppURL "https://www.cg-group.it"
+#define MyAppPublisher "Dott. Geron Daniele"
+#define MyAppURL "https://github.com/Dan74Ger/CGEasy"
 #define MyAppExeName "CGEasy.App.exe"
 
 [Setup]
-; Informazioni di base
-AppId={{B8F3D9A1-2C4E-4F5A-9B7D-1E3C5A7B9D2F}
+; Informazioni applicazione
+AppId={{8F7A3B2C-1D4E-5F6A-9B8C-7D6E5F4A3B2C}
 AppName={#MyAppName}
 AppVersion={#MyAppVersion}
+AppVerName={#MyAppName} {#MyAppVersion}
 AppPublisher={#MyAppPublisher}
 AppPublisherURL={#MyAppURL}
 AppSupportURL={#MyAppURL}
 AppUpdatesURL={#MyAppURL}
 
-; Cartella di installazione di default
-DefaultDirName={autopf}\CGEasy
+; Percorsi installazione
+DefaultDirName={autopf}\{#MyAppName}
 DefaultGroupName={#MyAppName}
+DisableProgramGroupPage=yes
 
-; File di output
+; Output
 OutputDir=installer_output
 OutputBaseFilename=CGEasy_Setup_v{#MyAppVersion}
-
-; Compressione
+SetupIconFile=src\CGEasy.App\Assets\app_icon.ico
 Compression=lzma2/max
 SolidCompression=yes
 
-; Privilegi richiesti (admin per installare in Program Files)
+; Privilegi
 PrivilegesRequired=admin
+PrivilegesRequiredOverridesAllowed=dialog
 
-; Icona installer
-SetupIconFile=src\CGEasy.App\Images\logo.ico
+; Interfaccia
+WizardStyle=modern
+DisableWelcomePage=no
+LicenseFile=LICENSE.txt
+InfoBeforeFile=INSTALLAZIONE_DA_ZERO.md
 
-; Immagine wizard (opzionale)
-;WizardImageFile=installer_resources\wizard.bmp
-;WizardSmallImageFile=installer_resources\wizard_small.bmp
-
-; Lingua
-ShowLanguageDialog=no
-
-; Disinstallazione
+; Opzioni
+AllowNoIcons=yes
 UninstallDisplayIcon={app}\{#MyAppExeName}
 
 [Languages]
 Name: "italian"; MessagesFile: "compiler:Languages\Italian.isl"
-Name: "english"; MessagesFile: "compiler:Default.isl"
 
 [Tasks]
-Name: "desktopicon"; Description: "Crea un'icona sul &Desktop"; GroupDescription: "Icone aggiuntive:"; Flags: unchecked
-Name: "quicklaunchicon"; Description: "Crea un'icona nella &Barra di avvio veloce"; GroupDescription: "Icone aggiuntive:"; Flags: unchecked; OnlyBelowVersion: 6.1; Check: not IsAdminInstallMode
+Name: "desktopicon"; Description: "Crea un'icona sul desktop"; GroupDescription: "Icone aggiuntive:"
+Name: "startupicon"; Description: "Avvia CGEasy all'avvio di Windows"; GroupDescription: "Opzioni avvio:"
 
 [Files]
-; File principale (eseguibile)
-Source: "src\CGEasy.App\bin\Release\net8.0-windows\CGEasy.App.exe"; DestDir: "{app}"; Flags: ignoreversion
+; File applicazione (binari compilati)
+Source: "src\CGEasy.App\bin\Release\net8.0-windows\*"; DestDir: "{app}"; Flags: ignoreversion recursesubdirs createallsubdirs
 
-; DLL del progetto
-Source: "src\CGEasy.App\bin\Release\net8.0-windows\CGEasy.Core.dll"; DestDir: "{app}"; Flags: ignoreversion
-Source: "src\CGEasy.App\bin\Release\net8.0-windows\CGEasy.BilanciModule.dll"; DestDir: "{app}"; Flags: ignoreversion
-Source: "src\CGEasy.App\bin\Release\net8.0-windows\CGEasy.CircolariModule.dll"; DestDir: "{app}"; Flags: ignoreversion
-Source: "src\CGEasy.App\bin\Release\net8.0-windows\CGEasy.ControlloModule.dll"; DestDir: "{app}"; Flags: ignoreversion
-Source: "src\CGEasy.App\bin\Release\net8.0-windows\CGEasy.TodoModule.dll"; DestDir: "{app}"; Flags: ignoreversion
+; File documentazione
+Source: "README.md"; DestDir: "{app}\Docs"; Flags: ignoreversion
+Source: "INSTALLAZIONE_DA_ZERO.md"; DestDir: "{app}\Docs"; Flags: ignoreversion
+Source: "GUIDA_DATABASE.md"; DestDir: "{app}\Docs"; Flags: ignoreversion
 
-; File di configurazione
-Source: "src\CGEasy.App\bin\Release\net8.0-windows\CGEasy.App.deps.json"; DestDir: "{app}"; Flags: ignoreversion
-Source: "src\CGEasy.App\bin\Release\net8.0-windows\CGEasy.App.runtimeconfig.json"; DestDir: "{app}"; Flags: ignoreversion
-
-; DLL di terze parti
-Source: "src\CGEasy.App\bin\Release\net8.0-windows\*.dll"; DestDir: "{app}"; Flags: ignoreversion
-
-; Cartelle di risorse (lingue, etc.) - OPZIONALE
-; Se esistono cartelle con nome pattern xx-XX (es: it-IT, en-US), le copia
-Source: "src\CGEasy.App\bin\Release\net8.0-windows\it-IT\*"; DestDir: "{app}\it-IT"; Flags: ignoreversion recursesubdirs createallsubdirs skipifsourcedoesntexist
-Source: "src\CGEasy.App\bin\Release\net8.0-windows\en-US\*"; DestDir: "{app}\en-US"; Flags: ignoreversion recursesubdirs createallsubdirs skipifsourcedoesntexist
-Source: "src\CGEasy.App\bin\Release\net8.0-windows\de-DE\*"; DestDir: "{app}\de-DE"; Flags: ignoreversion recursesubdirs createallsubdirs skipifsourcedoesntexist
-Source: "src\CGEasy.App\bin\Release\net8.0-windows\fr-FR\*"; DestDir: "{app}\fr-FR"; Flags: ignoreversion recursesubdirs createallsubdirs skipifsourcedoesntexist
-Source: "src\CGEasy.App\bin\Release\net8.0-windows\es-ES\*"; DestDir: "{app}\es-ES"; Flags: ignoreversion recursesubdirs createallsubdirs skipifsourcedoesntexist
-
-; Database VUOTO iniziale (se non esiste, verrà creato dall'app)
-; IMPORTANTE: Il database verrà creato in C:\devcg-group\dbtest_prova al primo avvio
-; Le licenze verranno salvate nella stessa cartella (licenses.json)
+; Script di supporto
+Source: "prepara_installazione.ps1"; DestDir: "{app}\Scripts"; Flags: ignoreversion
+Source: "gestione_task.bat"; DestDir: "{app}\Scripts"; Flags: ignoreversion
 
 [Dirs]
-; Crea cartella per database e file licenze
-Name: "C:\devcg-group\dbtest_prova"; Permissions: users-modify
-Name: "{commonappdata}\CGEasy"; Permissions: users-modify
+; Crea cartella database
+Name: "C:\db_CGEASY"; Permissions: users-full
+Name: "C:\db_CGEASY\Backups"; Permissions: users-full
+Name: "C:\db_CGEASY\Logs"; Permissions: users-full
+Name: "C:\db_CGEASY\Allegati"; Permissions: users-full
 
 [Icons]
-; Menu Start
-Name: "{group}\{#MyAppName}"; Filename: "{app}\{#MyAppExeName}"; IconFilename: "{app}\{#MyAppExeName}"; IconIndex: 0
+; Icona menu Start
+Name: "{group}\{#MyAppName}"; Filename: "{app}\{#MyAppExeName}"
+Name: "{group}\Documentazione"; Filename: "{app}\Docs"
+Name: "{group}\Database"; Filename: "C:\db_CGEASY"
 Name: "{group}\Disinstalla {#MyAppName}"; Filename: "{uninstallexe}"
 
-; Desktop (opzionale, se selezionato) - FORZA l'icona dall'eseguibile
-Name: "{autodesktop}\{#MyAppName}"; Filename: "{app}\{#MyAppExeName}"; Tasks: desktopicon; IconFilename: "{app}\{#MyAppExeName}"; IconIndex: 0
+; Icona desktop (opzionale)
+Name: "{autodesktop}\{#MyAppName}"; Filename: "{app}\{#MyAppExeName}"; Tasks: desktopicon
 
-; Quick Launch (opzionale)
-Name: "{userappdata}\Microsoft\Internet Explorer\Quick Launch\{#MyAppName}"; Filename: "{app}\{#MyAppExeName}"; Tasks: quicklaunchicon; IconFilename: "{app}\{#MyAppExeName}"; IconIndex: 0
+; Icona avvio automatico (opzionale)
+Name: "{userstartup}\{#MyAppName}"; Filename: "{app}\{#MyAppExeName}"; Tasks: startupicon
 
 [Run]
-; Esegui l'applicazione dopo l'installazione (opzionale)
-Filename: "{app}\{#MyAppExeName}"; Description: "Avvia {#MyAppName}"; Flags: nowait postinstall skipifsilent
+; Crea database vuoto con solo admin e admin1 al primo avvio
+Filename: "{app}\{#MyAppExeName}"; Description: "Avvia {#MyAppName} ora"; Flags: nowait postinstall skipifsilent
+Filename: "explorer.exe"; Parameters: "C:\db_CGEASY"; Description: "Apri cartella database"; Flags: nowait postinstall skipifsilent unchecked
 
 [UninstallDelete]
-; Elimina file di log e temporanei durante la disinstallazione (opzionale)
-Type: filesandordirs; Name: "{localappdata}\CGEasy\logs"
+; NON eliminare il database durante la disinstallazione (sicurezza dati)
+Type: filesandordirs; Name: "{app}\Logs"
+Type: filesandordirs; Name: "{app}\Temp"
 
 [Code]
-// Nota: Il controllo .NET è stato rimosso perché potrebbe dare falsi negativi
-// L'installer installerà comunque il programma
-// Se .NET 8.0 manca, Windows mostrerà un errore all'avvio del programma
+var
+  DatabasePage: TInputOptionWizardPage;
+  SharedInstallPage: TInputQueryWizardPage;
+
+procedure InitializeWizard;
+begin
+  { Pagina 1: Opzioni Database }
+  DatabasePage := CreateInputOptionPage(wpSelectTasks,
+    'Configurazione Database', 'Seleziona le opzioni per il database',
+    'Il database verrà creato in C:\db_CGEASY\ con le seguenti opzioni:',
+    True, False);
+  DatabasePage.Add('Database vuoto (solo utenti admin e admin1)');
+  DatabasePage.Add('Criptazione automatica con password master');
+  DatabasePage.Values[0] := True;
+  DatabasePage.Values[1] := True;
+
+  { Pagina 2: Installazione Multi-PC (opzionale) }
+  SharedInstallPage := CreateInputQueryPage(DatabasePage.ID,
+    'Configurazione Rete (Opzionale)', 'Vuoi condividere il database in rete locale?',
+    'Se installi su più PC, puoi condividere il database per accesso multi-utente.');
+  SharedInstallPage.Add('Nome condivisione (es: CGEasy):', False);
+  SharedInstallPage.Values[0] := 'CGEasy';
+end;
+
+function NextButtonClick(CurPageID: Integer): Boolean;
+var
+  ResultCode: Integer;
+  ShareName: String;
+  SharePath: String;
+begin
+  Result := True;
+
+  { Dopo la selezione dei task, configura la condivisione }
+  if CurPageID = SharedInstallPage.ID then
+  begin
+    ShareName := SharedInstallPage.Values[0];
+    SharePath := 'C:\db_CGEASY';
+    
+    if ShareName <> '' then
+    begin
+      { Crea condivisione di rete usando net share }
+      if MsgBox('Vuoi creare la condivisione di rete "' + ShareName + '"?' + #13#10 +
+                'Questo permetterà ad altri PC di accedere al database.' + #13#10#13#10 +
+                'Percorso: \\' + ExpandConstant('{computername}') + '\' + ShareName,
+                mbConfirmation, MB_YESNO) = IDYES then
+      begin
+        { Rimuovi condivisione esistente }
+        Exec('net.exe', 'share ' + ShareName + ' /delete', '', SW_HIDE, ewWaitUntilTerminated, ResultCode);
+        
+        { Crea nuova condivisione }
+        if Exec('net.exe', 'share ' + ShareName + '=' + SharePath + ' /grant:everyone,FULL', '', SW_HIDE, ewWaitUntilTerminated, ResultCode) then
+        begin
+          MsgBox('Condivisione creata con successo!' + #13#10#13#10 +
+                 'I client possono accedere al database tramite:' + #13#10 +
+                 '\\' + ExpandConstant('{computername}') + '\' + ShareName + '\cgeasy.db',
+                 mbInformation, MB_OK);
+        end
+        else
+        begin
+          MsgBox('ATTENZIONE: Impossibile creare la condivisione.' + #13#10 +
+                 'Potrebbe essere necessario configurarla manualmente.', 
+                 mbError, MB_OK);
+        end;
+      end;
+    end;
+  end;
+end;
+
+procedure CurStepChanged(CurStep: TSetupStep);
+var
+  LicensesJson: String;
+begin
+  if CurStep = ssPostInstall then
+  begin
+    { Crea file licenses.json se non esiste }
+    if not FileExists('C:\db_CGEASY\licenses.json') then
+    begin
+      LicensesJson := '{"LicenseInfo":{"ProductName":"CGEasy","Version":"1.0.0","LicenseType":"Trial","IsActivated":false},"Licenses":[]}';
+      SaveStringToFile('C:\db_CGEASY\licenses.json', LicensesJson, False);
+    end;
+  end;
+end;
+
+procedure DeinitializeSetup();
+var
+  ButtonPressed: Integer;
+begin
+  { Messaggio finale con credenziali }
+  if not WizardSilent then
+  begin
+    ButtonPressed := MsgBox(
+      'Installazione completata con successo!' + #13#10#13#10 +
+      '==================================' + #13#10 +
+      'CREDENZIALI DI ACCESSO' + #13#10 +
+      '==================================' + #13#10 +
+      'Username: admin1' + #13#10 +
+      'Password: 123123' + #13#10#13#10 +
+      'Database: C:\db_CGEASY\cgeasy.db' + #13#10 +
+      'Password DB: Woodstockac@74' + #13#10#13#10 +
+      'IMPORTANTE: Annota queste credenziali!',
+      mbInformation, MB_OK);
+  end;
+end;
+
+[Registry]
+; Registra percorso database (opzionale, per configurazioni avanzate)
+Root: HKLM; Subkey: "Software\{#MyAppName}"; ValueType: string; ValueName: "DatabasePath"; ValueData: "C:\db_CGEASY\cgeasy.db"; Flags: uninsdeletekey
+Root: HKLM; Subkey: "Software\{#MyAppName}"; ValueType: string; ValueName: "Version"; ValueData: "{#MyAppVersion}"; Flags: uninsdeletekey
+Root: HKLM; Subkey: "Software\{#MyAppName}"; ValueType: string; ValueName: "InstallPath"; ValueData: "{app}"; Flags: uninsdeletekey
+
+[Messages]
+; Messaggi personalizzati in italiano
+italian.WelcomeLabel2=Questo installerà [name/ver] sul tuo computer.%n%nCGEasy è un software gestionale completo per studi professionali.%n%nSi consiglia di chiudere tutte le altre applicazioni prima di continuare.
+italian.FinishedLabel=CGEasy è stato installato con successo!%n%nPer avviare l'applicazione, usa l'icona sul desktop o dal menu Start.%n%nCredenziali di accesso:%nUsername: admin1%nPassword: 123123
 
