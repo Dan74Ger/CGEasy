@@ -1,0 +1,78 @@
+LICENZA SOFTWARE - CGEasy
+
+Copyright (c) 2025 Dott. Geron Daniele
+Tutti i diritti riservati.
+
+ACCORDO DI LICENZA D'USO DEL SOFTWARE
+
+Questo Accordo di Licenza ("Accordo") è un contratto legale tra te (persona fisica 
+o giuridica) e Dott. Geron Daniele ("Licenziante") per l'uso del software CGEasy 
+("Software").
+
+UTILIZZANDO IL SOFTWARE, ACCETTI DI ESSERE VINCOLATO DAI TERMINI DI QUESTO ACCORDO.
+
+1. CONCESSIONE DELLA LICENZA
+   Il Licenziante ti concede una licenza non esclusiva, non trasferibile e revocabile 
+   per utilizzare il Software esclusivamente per scopi interni della tua organizzazione.
+
+2. LIMITAZIONI
+   Non puoi:
+   - Copiare, modificare o distribuire il Software senza autorizzazione scritta
+   - Decompilare, disassemblare o effettuare reverse engineering del Software
+   - Rimuovere o alterare avvisi di copyright o marchi registrati
+   - Utilizzare il Software per scopi illegali o non autorizzati
+
+3. PROPRIETÀ INTELLETTUALE
+   Tutti i diritti, titoli e interessi nel Software rimangono proprietà esclusiva 
+   del Licenziante. Questo Accordo non ti trasferisce alcun diritto di proprietà 
+   intellettuale.
+
+4. SUPPORTO E AGGIORNAMENTI
+   Il supporto tecnico e gli aggiornamenti sono forniti secondo i termini della 
+   licenza acquistata. Il Licenziante si riserva il diritto di modificare o 
+   interrompere il supporto in qualsiasi momento.
+
+5. GARANZIA LIMITATA
+   IL SOFTWARE È FORNITO "COSÌ COM'È", SENZA GARANZIE DI ALCUN TIPO, ESPLICITE 
+   O IMPLICITE, INCLUSE MA NON LIMITATE A GARANZIE DI COMMERCIABILITÀ, IDONEITÀ 
+   PER UN PARTICOLARE SCOPO E NON VIOLAZIONE.
+
+6. LIMITAZIONE DI RESPONSABILITÀ
+   IN NESSUN CASO IL LICENZIANTE SARÀ RESPONSABILE PER DANNI DIRETTI, INDIRETTI, 
+   INCIDENTALI, SPECIALI, CONSEQUENZIALI O PUNITIVI DERIVANTI DALL'USO O 
+   DALL'IMPOSSIBILITÀ DI UTILIZZARE IL SOFTWARE.
+
+7. PROTEZIONE DEI DATI
+   Il Software elabora dati personali secondo le normative vigenti (GDPR). 
+   L'utente è responsabile della conformità alle leggi sulla privacy applicabili.
+
+8. TERMINE E RISOLUZIONE
+   Questo Accordo è efficace fino alla risoluzione. Puoi risolverlo in qualsiasi 
+   momento disinstallando il Software. Il Licenziante può risolvere questo Accordo 
+   se violi uno qualsiasi dei termini.
+
+9. BACKUP E SICUREZZA DEI DATI
+   L'utente è responsabile del backup regolare dei propri dati. Il Licenziante 
+   non è responsabile per la perdita di dati.
+
+10. AGGIORNAMENTI DELL'ACCORDO
+    Il Licenziante si riserva il diritto di modificare questo Accordo. Gli 
+    aggiornamenti entreranno in vigore al momento della pubblicazione.
+
+11. LEGGE APPLICABILE
+    Questo Accordo è regolato dalle leggi italiane. Qualsiasi controversia sarà 
+    di competenza esclusiva del foro di [Città], Italia.
+
+12. ACCORDO COMPLETO
+    Questo Accordo costituisce l'intero accordo tra le parti riguardo all'oggetto 
+    e sostituisce tutti gli accordi precedenti.
+
+CONTATTI:
+Per domande su questo Accordo o per richiedere permessi:
+Email: [da configurare]
+Sito web: https://github.com/Dan74Ger/CGEasy
+
+DATA ULTIMO AGGIORNAMENTO: 07 Novembre 2025
+
+ACCETTANDO QUESTO ACCORDO, CONFERMI DI AVERLO LETTO, COMPRESO E ACCETTATO.
+

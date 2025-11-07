@@ -1,168 +1,351 @@
-# 📦 CGEasy - Guida Creazione Installer
+# 🚀 Guida Creazione Installer CGEasy
 
-## 🎯 REQUISITI
+## 📋 Prerequisiti
 
-1. **Inno Setup 6.x**
-   - Download: https://jrsoftware.org/isdl.php
-   - Installa versione completa (con preprocessore e tools)
+### 1. Inno Setup
+**Download**: https://jrsoftware.org/isdl.php
 
-2. **.NET 8.0 Desktop Runtime**
-   - Il programma richiede .NET 8.0 per funzionare
-   - L'installer verificherà se è presente e guiderà l'utente all'installazione
+- ✅ Versione consigliata: **6.2.2** o superiore
+- ✅ Gratuito e Open Source
+- ✅ Supporta Windows 7/8/10/11
 
-## 📋 PASSI PER CREARE L'INSTALLER
+**Installazione**:
+1. Scarica `innosetup-6.2.2.exe`
+2. Esegui l'installer
+3. Segui il wizard (Next, Next, Install)
+4. ✅ Installazione completata in `C:\Program Files (x86)\Inno Setup 6\`
 
-### **STEP 1: Compila il progetto in Release**
+### 2. .NET 8.0 SDK
+Già installato per lo sviluppo.
 
-Prima di creare l'installer, compila il progetto in modalità **Release** per avere file ottimizzati:
+### 3. File Necessari
+Tutti i file sono già pronti nel progetto:
+- ✅ `installer.iss` - Script Inno Setup
+- ✅ `LICENSE.txt` - Licenza software
+- ✅ `INSTALLAZIONE_DA_ZERO.md` - Guida installazione
+- ✅ Binari compilati in `src\CGEasy.App\bin\Release\net8.0-windows\`
 
-```powershell
-dotnet publish src\CGEasy.App\CGEasy.App.csproj -c Release -r win-x64 --self-contained false
-```
+---
 
-**NOTA:** Se vuoi includere .NET nel pacchetto (self-contained), usa `--self-contained true` (il file sarà più grande).
+## 🔨 Procedura di Creazione Installer
 
-### **STEP 2: Modifica lo script (se necessario)**
-
-Apri `CGEasy_Installer.iss` e modifica se necessario:
-
-- **Versione:** Cambia `MyAppVersion` (riga 5)
-- **Percorso:** Se usi Release, cambia `Debug` in `Release` nelle righe `Source:`
-- **Icona:** Se hai un file `.ico`, decommentare la riga `SetupIconFile`
-
-### **STEP 3: Compila lo script con Inno Setup**
-
-#### **Metodo 1: Interfaccia Grafica**
-
-1. Apri **Inno Setup Compiler** (dal menu Start)
-2. File → Open → Seleziona `CGEasy_Installer.iss`
-3. Build → Compile (o premi F9)
-4. Attendi la compilazione
-5. Il file `CGEasy_Setup_v1.0.0.exe` verrà creato nella cartella `installer_output`
-
-#### **Metodo 2: Riga di comando**
+### **Step 1: Compila l'applicazione in Release**
 
 ```powershell
-"C:\Program Files (x86)\Inno Setup 6\ISCC.exe" CGEasy_Installer.iss
+cd C:\devcg-group\appcg_easy_project
+dotnet build --configuration Release
 ```
 
-### **STEP 4: Testa l'installer**
-
-1. Vai nella cartella `installer_output`
-2. Esegui `CGEasy_Setup_v1.0.0.exe`
-3. Segui il wizard di installazione
-4. Verifica che il programma si avvii correttamente
-
-## 📂 STRUTTURA INSTALLAZIONE
-
-Dopo l'installazione, i file saranno così organizzati:
-
+**Output atteso**:
 ```
-C:\Program Files\CGEasy\          → File del programma
-  ├─ CGEasy.App.exe               → Eseguibile principale
-  ├─ CGEasy.Core.dll              → DLL core
-  ├─ CGEasy.*.dll                 → Altri moduli
-  ├─ *.dll                        → Librerie di terze parti
-  └─ [cartelle lingue]            → Risorse localizzate
-
-C:\Users\[user]\AppData\Local\CGEasy\  → Dati utente
-  ├─ cgeasy.db                    → Database principale
-  ├─ DatabaseBackup\              → Backup automatici
-  └─ logs\                        → File di log
+Build succeeded.
+    0 Error(s)
+    [warnings] Warning(s)
 ```
 
-## 🔧 PERSONALIZZAZIONI AVANZATE
+**Verifica binari**:
+```powershell
+Get-ChildItem "src\CGEasy.App\bin\Release\net8.0-windows" | Select-Object Name, Length
+```
 
-### **Includere il database preconfigurato**
+Dovresti vedere:
+- `CGEasy.App.exe`
+- `CGEasy.Core.dll`
+- Varie altre DLL (.NET runtime, LiteDB, ClosedXML, ecc.)
 
-Se vuoi includere un database con dati iniziali (es: utente admin, template preimpostati):
+---
 
-1. Crea un file `cgeasy_template.db` con i dati iniziali
-2. Aggiungi questa riga in `[Files]`:
+### **Step 2: Crea l'icona (opzionale)**
+
+Se non esiste `src\CGEasy.App\Assets\app_icon.ico`, puoi:
+
+**Opzione A**: Creare un'icona semplice
+```powershell
+# Usa un'icona di default o crea la tua con un tool online
+# Es: https://favicon.io/ o https://www.icoconverter.com/
+```
+
+**Opzione B**: Disabilitare l'icona nel file `installer.iss`
+Commenta la riga:
+```iss
+; SetupIconFile=src\CGEasy.App\Assets\app_icon.ico
+```
+
+---
+
+### **Step 3: Compila l'installer con Inno Setup**
+
+#### Metodo A: Interfaccia Grafica (Consigliato per prima volta)
+
+1. **Apri Inno Setup Compiler**
+   - Menu Start → Inno Setup → Inno Setup Compiler
+
+2. **Carica lo script**
+   - File → Open
+   - Seleziona: `C:\devcg-group\appcg_easy_project\installer.iss`
+
+3. **Compila**
+   - Build → Compile (oppure F9)
+
+4. **Attendi la compilazione**
    ```
-   Source: "cgeasy_template.db"; DestDir: "{localappdata}\CGEasy"; DestName: "cgeasy.db"; Flags: onlyifdoesntexist
-   ```
-
-### **Includere documentazione**
-
-Aggiungi file PDF o HTML:
-
-```
-Source: "docs\manuale.pdf"; DestDir: "{app}\docs"; Flags: ignoreversion
-```
-
-E crea un'icona nel menu Start:
-
-```
-Name: "{group}\Manuale Utente"; Filename: "{app}\docs\manuale.pdf"
-```
-
-### **Includere .NET Runtime nell'installer**
-
-Per creare un pacchetto che include .NET (più grande ma autonomo):
-
-1. Usa `--self-contained true` nella build
-2. Cambia le righe `Source:` per includere tutti i file runtime
-
-## ⚠️ NOTE IMPORTANTI
-
-1. **Database:**
-   - Il database viene creato in `%LOCALAPPDATA%\CGEasy`
-   - Ogni utente Windows ha il proprio database
-   - Per database condiviso, serve una versione server-client
-
-2. **Permessi:**
-   - L'installer richiede privilegi admin (per installare in Program Files)
-   - L'app può girare senza admin (dati in AppData)
-
-3. **Disinstallazione:**
-   - L'installer crea automaticamente un uninstaller
-   - I dati utente (database) NON vengono eliminati alla disinstallazione
-   - Per eliminare anche i dati, l'utente deve cancellare manualmente `%LOCALAPPDATA%\CGEasy`
-
-4. **Aggiornamenti:**
-   - Per aggiornare, basta eseguire il nuovo installer
-   - Inno Setup sovrascrive i file del programma
-   - Il database viene preservato
-
-## 🚀 DISTRIBUZIONE
-
-Una volta creato `CGEasy_Setup_v1.0.0.exe`:
-
-- **Dimensione:** ~50-100 MB (senza .NET runtime incluso)
-- **Compatibilità:** Windows 10/11 (x64)
-- **Requisiti:** .NET 8.0 Desktop Runtime
-
-Puoi distribuire questo singolo file `.exe` tramite:
-- Email
-- Chiavetta USB
-- Download da sito web
-- Rete aziendale
-
-## 🔐 FIRMA DIGITALE (Opzionale)
-
-Per firmare digitalmente l'installer (consigliato per distribuzione professionale):
-
-1. Ottieni un certificato di firma codice
-2. Aggiungi in `[Setup]`:
-   ```
-   SignTool=signtool sign /f "path\to\certificate.pfx" /p "password" /t http://timestamp.digicert.com $f
+   Compiling script...
+   Creating setup files...
+   Setup successfully compiled.
    ```
 
-## 📞 SUPPORTO
+5. **Output**
+   L'installer verrà creato in:
+   ```
+   C:\devcg-group\appcg_easy_project\installer_output\CGEasy_Setup_v1.0.0.exe
+   ```
 
-Per problemi o domande, contatta: support@cggroup.it
+#### Metodo B: Linea di Comando (Automatico)
 
+```powershell
+cd C:\devcg-group\appcg_easy_project
 
+# Compila lo script
+"C:\Program Files (x86)\Inno Setup 6\ISCC.exe" installer.iss
+```
 
+**Output atteso**:
+```
+Inno Setup 6 Command-Line Compiler
 
+Compiling installer.iss...
+Preprocessor: [lines processed]
+Compiler: [files processed]
+Setup successfully compiled.
+Output: installer_output\CGEasy_Setup_v1.0.0.exe
+```
 
+---
 
+### **Step 4: Testa l'installer**
 
+1. **Esegui l'installer**
+   ```powershell
+   .\installer_output\CGEasy_Setup_v1.0.0.exe
+   ```
 
+2. **Wizard di installazione**
+   - ✅ Welcome page
+   - ✅ License agreement (accetta)
+   - ✅ Selezione cartella installazione (default: `C:\Program Files\CGEasy\`)
+   - ✅ Configurazione database (default: database vuoto)
+   - ✅ Configurazione rete (opzionale)
+   - ✅ Task aggiuntivi (icona desktop, avvio automatico)
+   - ✅ Installazione in corso...
+   - ✅ Completamento
 
+3. **Verifica installazione**
+   ```powershell
+   # Verifica file applicazione
+   Get-ChildItem "C:\Program Files\CGEasy"
 
+   # Verifica database
+   Get-ChildItem "C:\db_CGEASY"
+   ```
 
+4. **Avvia CGEasy**
+   - Dal menu Start: CGEasy
+   - Oppure dall'icona desktop
+   - Login: `admin1` / `123123`
 
+---
 
+## 📦 Distribuzione Installer
 
+### **Opzione 1: Distribuzione Locale**
+
+Copia il file `CGEasy_Setup_v1.0.0.exe` su:
+- ✅ Chiavetta USB
+- ✅ Cartella condivisa di rete
+- ✅ Server FTP interno
+
+### **Opzione 2: Distribuzione Online**
+
+1. **GitHub Releases** (consigliato)
+   ```powershell
+   # Carica su GitHub come release
+   gh release create v1.0.0 installer_output\CGEasy_Setup_v1.0.0.exe --title "CGEasy v1.0.0" --notes "Prima release stabile"
+   ```
+
+2. **Server Web**
+   - Carica su un server web aziendale
+   - Condividi il link: `https://tuoserver.it/downloads/CGEasy_Setup_v1.0.0.exe`
+
+3. **Cloud Storage**
+   - Google Drive, Dropbox, OneDrive
+   - Condividi link pubblico o privato
+
+---
+
+## 🔄 Aggiornamento Versione
+
+Per creare una nuova versione:
+
+1. **Modifica `installer.iss`**
+   ```iss
+   #define MyAppVersion "1.0.1"  ; <- Cambia qui
+   ```
+
+2. **Ricompila applicazione**
+   ```powershell
+   dotnet build --configuration Release
+   ```
+
+3. **Ricompila installer**
+   ```powershell
+   "C:\Program Files (x86)\Inno Setup 6\ISCC.exe" installer.iss
+   ```
+
+4. **Output**
+   ```
+   installer_output\CGEasy_Setup_v1.0.1.exe
+   ```
+
+---
+
+## 🎨 Personalizzazione Installer
+
+### Cambiare Icona
+```iss
+SetupIconFile=percorso\alla\tua\icona.ico
+```
+
+### Aggiungere File Aggiuntivi
+```iss
+[Files]
+Source: "MioFile.pdf"; DestDir: "{app}\Docs"; Flags: ignoreversion
+```
+
+### Modificare Percorso Database
+```iss
+[Dirs]
+Name: "D:\CGEasyDB"; Permissions: users-full  ; <- Cambia percorso
+```
+
+### Aggiungere Step Personalizzati
+Modifica la sezione `[Code]` in `installer.iss`.
+
+---
+
+## 🐛 Risoluzione Problemi
+
+### Errore: "ISCC.exe non trovato"
+**Causa**: Inno Setup non installato o percorso errato
+**Soluzione**: 
+```powershell
+# Verifica installazione
+Test-Path "C:\Program Files (x86)\Inno Setup 6\ISCC.exe"
+```
+
+### Errore: "File not found: src\CGEasy.App\bin\Release\..."
+**Causa**: Applicazione non compilata in Release
+**Soluzione**:
+```powershell
+dotnet build --configuration Release
+```
+
+### Errore: "Cannot create output file"
+**Causa**: Installer già aperto o in uso
+**Soluzione**:
+```powershell
+# Chiudi processi in uso
+taskkill /F /IM CGEasy_Setup_v1.0.0.exe
+```
+
+### Warning: "Icon file not found"
+**Causa**: File `app_icon.ico` non esiste
+**Soluzione**: Commenta la riga in `installer.iss`:
+```iss
+; SetupIconFile=src\CGEasy.App\Assets\app_icon.ico
+```
+
+---
+
+## 📝 Checklist Pre-Release
+
+Prima di distribuire l'installer, verifica:
+
+- [ ] ✅ Applicazione compilata in **Release** (non Debug)
+- [ ] ✅ Versione aggiornata in `installer.iss`
+- [ ] ✅ File `LICENSE.txt` presente
+- [ ] ✅ File documentazione aggiornati
+- [ ] ✅ Database di test funzionante
+- [ ] ✅ Installer testato su PC pulito
+- [ ] ✅ Credenziali di default corrette (admin1/123123)
+- [ ] ✅ Password database corretta (Woodstockac@74)
+- [ ] ✅ Nessun file di sviluppo incluso
+
+---
+
+## 🎯 Script Automatico per Build Completa
+
+Crea `build_installer.ps1`:
+
+```powershell
+# Build completo: applicazione + installer
+
+Write-Host "========================================" -ForegroundColor Cyan
+Write-Host "  BUILD INSTALLER CGEASY" -ForegroundColor Cyan
+Write-Host "========================================" -ForegroundColor Cyan
+
+# 1. Pulisci build precedenti
+Write-Host "`n[1] Pulizia build precedenti..." -ForegroundColor Yellow
+dotnet clean --configuration Release
+
+# 2. Compila applicazione
+Write-Host "`n[2] Compilazione applicazione Release..." -ForegroundColor Yellow
+dotnet build --configuration Release
+
+if ($LASTEXITCODE -ne 0) {
+    Write-Host "`nERRORE durante la compilazione!" -ForegroundColor Red
+    exit 1
+}
+
+# 3. Compila installer
+Write-Host "`n[3] Compilazione installer..." -ForegroundColor Yellow
+& "C:\Program Files (x86)\Inno Setup 6\ISCC.exe" installer.iss
+
+if ($LASTEXITCODE -ne 0) {
+    Write-Host "`nERRORE durante la creazione installer!" -ForegroundColor Red
+    exit 1
+}
+
+# 4. Riepilogo
+Write-Host "`n========================================" -ForegroundColor Green
+Write-Host "  BUILD COMPLETATO CON SUCCESSO!" -ForegroundColor Green
+Write-Host "========================================" -ForegroundColor Green
+
+$installerPath = "installer_output\CGEasy_Setup_v1.0.0.exe"
+$installerSize = (Get-Item $installerPath).Length / 1MB
+Write-Host "`nInstaller creato:" -ForegroundColor Cyan
+Write-Host "  Percorso: $installerPath" -ForegroundColor White
+Write-Host "  Dimensione: $($installerSize.ToString('0.00')) MB" -ForegroundColor White
+
+Write-Host "`nPremi un tasto per uscire..." -ForegroundColor Gray
+$null = $Host.UI.RawUI.ReadKey("NoEcho,IncludeKeyDown")
+```
+
+**Uso**:
+```powershell
+.\build_installer.ps1
+```
+
+---
+
+## 📞 Supporto
+
+Per problemi con l'installer:
+- Controlla i log in `installer_output\`
+- Consulta la documentazione Inno Setup: https://jrsoftware.org/ishelp/
+- Apri issue su GitHub: https://github.com/Dan74Ger/CGEasy/issues
+
+---
+
+**Versione documento**: 1.0  
+**Data**: 07/11/2025  
+**Autore**: AI Assistant per Dott. Geron Daniele
