@@ -62,15 +62,30 @@ namespace CGEasy.Core.Data
         {
             try
             {
-                // Se esiste file password, il DB è criptato con MASTER PASSWORD
-                if (DatabaseEncryptionService.IsDatabaseEncrypted())
+                var dbPath = DefaultDatabasePath;
+                var keyPath = Path.Combine(Path.GetDirectoryName(dbPath)!, "db.key");
+                
+                // Se il database NON esiste, sarà creato SENZA password
+                if (!File.Exists(dbPath))
                 {
+                    System.Diagnostics.Debug.WriteLine("Database non esiste, verrà creato senza password");
+                    return null;
+                }
+                
+                // Se esiste db.key, usa la password master
+                if (File.Exists(keyPath))
+                {
+                    System.Diagnostics.Debug.WriteLine("db.key trovato, apro con password master");
                     return DatabaseEncryptionService.GetMasterPassword();
                 }
+                
+                // Altrimenti apri senza password
+                System.Diagnostics.Debug.WriteLine("db.key non trovato, apro senza password");
                 return null;
             }
-            catch
+            catch (Exception ex)
             {
+                System.Diagnostics.Debug.WriteLine($"Errore GetPasswordForDatabase: {ex.Message}");
                 return null;
             }
         }
