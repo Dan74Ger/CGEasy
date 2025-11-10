@@ -48,9 +48,9 @@ namespace CGEasy.Core.Data
 
         /// <summary>
         /// Costruttore - Usa percorso database di default
-        /// Controlla se esiste password salvata e la usa automaticamente
+        /// Prova prima SENZA password, poi CON password se fallisce
         /// </summary>
-        public LiteDbContext() : this(DefaultDatabasePath, GetPasswordForDatabase())
+        public LiteDbContext() : this(DefaultDatabasePath, null)
         {
         }
 
@@ -92,6 +92,7 @@ namespace CGEasy.Core.Data
 
         /// <summary>
         /// Costruttore con percorso custom
+        /// Tenta prima senza password, poi con password se fallisce
         /// </summary>
         /// <param name="databasePath">Percorso file database (locale o UNC)</param>
         /// <param name="password">Password per crittografia database (opzionale)</param>
@@ -143,8 +144,44 @@ namespace CGEasy.Core.Data
                 Password = password // Aggiunge password se presente
             };
 
-            // Crea database con mapper dedicato
-            _database = new LiteDatabase(connectionString, mapper);
+            try
+            {
+                // Crea database con mapper dedicato
+                _database = new LiteDatabase(connectionString, mapper);
+                System.Diagnostics.Debug.WriteLine($"Database aperto con successo {(password != null ? "CON" : "SENZA")} password");
+            }
+            catch (LiteException ex) when (ex.Message.Contains("Invalid database") || ex.Message.Contains("not encrypted") || ex.Message.Contains("password"))
+            {
+                // Se fallisce senza password, prova CON password
+                if (password == null && File.Exists(databasePath))
+                {
+                    var keyPath = Path.Combine(Path.GetDirectoryName(databasePath)!, "db.key");
+                    if (File.Exists(keyPath))
+                    {
+                        System.Diagnostics.Debug.WriteLine("Tentativo fallito senza password, riprovo CON password da db.key");
+                        var masterPassword = DatabaseEncryptionService.GetMasterPassword();
+                        connectionString.Password = masterPassword;
+                        _database = new LiteDatabase(connectionString, mapper);
+                        System.Diagnostics.Debug.WriteLine("Database aperto CON password");
+                    }
+                    else
+                    {
+                        throw; // Nessun db.key disponibile, rilancia l'eccezione
+                    }
+                }
+                // Se fallisce con password (database non criptato), prova SENZA
+                else if (password != null && ex.Message.Contains("not encrypted"))
+                {
+                    System.Diagnostics.Debug.WriteLine("Database NON è criptato, riprovo SENZA password");
+                    connectionString.Password = null;
+                    _database = new LiteDatabase(connectionString, mapper);
+                    System.Diagnostics.Debug.WriteLine("Database aperto SENZA password");
+                }
+                else
+                {
+                    throw; // Altro errore, rilancia
+                }
+            }
 
             // Assicura esistenza collections
             EnsureCollections();
