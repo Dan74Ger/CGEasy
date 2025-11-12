@@ -1,0 +1,636 @@
+<UserControl x:Class="CGEasy.App.Views.BancaDettaglioView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006" 
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             mc:Ignorable="d" 
+             d:DesignHeight="800" d:DesignWidth="1400"
+             Background="White">
+    <Grid Margin="20">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*"/>
+            <RowDefinition Height="Auto"/>
+        </Grid.RowDefinitions>
+
+        <!-- HEADER -->
+        <TextBlock Grid.Row="0" Text="{Binding Banca.NomeBanca, StringFormat='🏦 {0}'}" 
+                   FontSize="24" FontWeight="Bold" Foreground="#2C3E50" Margin="0,0,0,20"/>
+
+        <!-- STATISTICHE -->
+        <Border Grid.Row="1" Background="#ECF0F1" CornerRadius="8" Padding="20" Margin="0,0,0,20">
+            <Grid>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="*"/>
+                </Grid.ColumnDefinitions>
+
+                <StackPanel Grid.Column="0">
+                    <TextBlock Text="💰 Saldo Corrente" FontSize="12" Foreground="#7F8C8D" Margin="0,0,0,5"/>
+                    <TextBlock Text="{Binding SaldoCorrente, StringFormat='{}{0:N2} €'}" FontSize="18" FontWeight="Bold" Foreground="#27AE60"/>
+                </StackPanel>
+
+                <StackPanel Grid.Column="1">
+                    <TextBlock Text="📊 Fido C/C Accordato" FontSize="12" Foreground="#7F8C8D" Margin="0,0,0,5"/>
+                    <TextBlock Text="{Binding Banca.FidoCCAccordato, StringFormat='{}{0:N2} €'}" FontSize="18" FontWeight="Bold" Foreground="#3498DB"/>
+                </StackPanel>
+
+                <StackPanel Grid.Column="2">
+                    <TextBlock Text="💳 Fido Max Anticipi/SBF" FontSize="12" Foreground="#7F8C8D" Margin="0,0,0,5"/>
+                    <TextBlock Text="{Binding Banca.AnticipoFattureMassimo, StringFormat='{}{0:N2} €'}" FontSize="18" FontWeight="Bold" Foreground="#9B59B6"/>
+                </StackPanel>
+
+                <StackPanel Grid.Column="3">
+                    <TextBlock Text="📈 Utilizzo Anticipi" FontSize="12" Foreground="#7F8C8D" Margin="0,0,0,5"/>
+                    <TextBlock Text="{Binding PercentualeUtilizzoFido, StringFormat={}{0:F1}%}" FontSize="18" FontWeight="Bold" Foreground="#E67E22"/>
+                </StackPanel>
+
+                <StackPanel Grid.Column="4">
+                    <TextBlock Text="💸 Fatturato Anticipo Residuo" FontSize="12" Foreground="#7F8C8D" Margin="0,0,0,5"/>
+                    <TextBlock Text="{Binding AnticipoResiduo, StringFormat='{}{0:N2} €'}" FontSize="18" FontWeight="Bold">
+                        <TextBlock.Style>
+                            <Style TargetType="TextBlock">
+                                <Setter Property="Foreground" Value="#9B59B6"/>
+                            </Style>
+                        </TextBlock.Style>
+                    </TextBlock>
+                </StackPanel>
+
+                <StackPanel Grid.Column="5">
+                    <TextBlock Text="📋 Fatturato Anticipato" FontSize="12" Foreground="#7F8C8D" Margin="0,0,0,5"/>
+                    <TextBlock Text="{Binding TotaleFatturatoAnticipato, StringFormat='{}{0:N2} €'}" FontSize="18" FontWeight="Bold" Foreground="#16A085"/>
+                </StackPanel>
+            </Grid>
+        </Border>
+
+        <!-- TABCONTROL -->
+        <TabControl Grid.Row="2" SelectionChanged="TabControl_SelectionChanged">
+            <!-- TAB INCASSI -->
+            <TabItem Header="📥 Incassi">
+                <Grid Margin="15">
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto"/> <!-- Pulsanti azioni -->
+                        <RowDefinition Height="Auto"/> <!-- Filtri -->
+                        <RowDefinition Height="*"/>    <!-- DataGrid -->
+                    </Grid.RowDefinitions>
+
+                    <!-- PULSANTI AZIONI INCASSI -->
+                    <StackPanel Grid.Row="0" Orientation="Horizontal" Margin="0,0,0,10">
+                        <Button Content="➕ Nuovo Incasso" Command="{Binding NuovoIncassoCommand}" 
+                                Padding="12,6" Background="#27AE60" Foreground="White" BorderThickness="0" Cursor="Hand"/>
+                        <Button Content="✅ Segna Incassato" Command="{Binding SegnaIncassatoCommand}" 
+                                Padding="12,6" Margin="10,0,0,0" Background="#3498DB" Foreground="White" BorderThickness="0" Cursor="Hand"/>
+                        <Button Content="📥 Importa da Excel" Command="{Binding ImportaIncassiExcelCommand}" 
+                                Padding="12,6" Margin="10,0,0,0" Background="#9B59B6" Foreground="White" BorderThickness="0" Cursor="Hand"/>
+                        <Button Content="📊 Export Excel" Command="{Binding ExportIncassiExcelCommand}" 
+                                Padding="12,6" Margin="10,0,0,0" Background="#27AE60" Foreground="White" BorderThickness="0" Cursor="Hand"/>
+                    </StackPanel>
+
+                    <!-- FILTRI INCASSI -->
+                    <Border Grid.Row="1" Background="#F8F9FA" CornerRadius="5" Padding="15" Margin="0,0,0,10">
+                        <Grid>
+                            <Grid.RowDefinitions>
+                                <RowDefinition Height="Auto"/>
+                                <RowDefinition Height="Auto"/>
+                            </Grid.RowDefinitions>
+                            
+                            <!-- RIGA 1: FILTRI -->
+                            <StackPanel Grid.Row="0" Orientation="Horizontal">
+                                <StackPanel Margin="0,0,10,0">
+                                    <TextBlock Text="Cliente" FontSize="11" Foreground="#7F8C8D" Margin="0,0,0,3"/>
+                                    <TextBox Text="{Binding FiltroCliente, UpdateSourceTrigger=PropertyChanged}" 
+                                             Width="150" Padding="5"/>
+                                </StackPanel>
+                                
+                                <StackPanel Margin="0,0,10,0">
+                                    <TextBlock Text="Anno" FontSize="11" Foreground="#7F8C8D" Margin="0,0,0,3"/>
+                                    <TextBox Text="{Binding FiltroAnno, UpdateSourceTrigger=PropertyChanged}" 
+                                             Width="80" Padding="5"/>
+                                </StackPanel>
+                                
+                                <StackPanel Margin="0,0,10,0">
+                                    <TextBlock Text="Mese" FontSize="11" Foreground="#7F8C8D" Margin="0,0,0,3"/>
+                                    <TextBox Text="{Binding FiltroMese, UpdateSourceTrigger=PropertyChanged}" 
+                                             Width="80" Padding="5"/>
+                                </StackPanel>
+                                
+                                <StackPanel Margin="0,0,10,0">
+                                    <TextBlock Text="Incassato" FontSize="11" Foreground="#7F8C8D" Margin="0,0,0,3"/>
+                                    <ComboBox SelectedValue="{Binding FiltroIncassato}" SelectedValuePath="Content" Width="100" Padding="5">
+                                        <ComboBoxItem Content="Tutti"/>
+                                        <ComboBoxItem Content="Si"/>
+                                        <ComboBoxItem Content="No"/>
+                                    </ComboBox>
+                                </StackPanel>
+                                
+                                <StackPanel Margin="0,0,10,0">
+                                    <TextBlock Text="Con Anticipo" FontSize="11" Foreground="#7F8C8D" Margin="0,0,0,3"/>
+                                    <ComboBox SelectedValue="{Binding FiltroConAnticipo}" SelectedValuePath="Content" Width="100" Padding="5">
+                                        <ComboBoxItem Content="Tutti"/>
+                                        <ComboBoxItem Content="Si"/>
+                                        <ComboBoxItem Content="No"/>
+                                    </ComboBox>
+                                </StackPanel>
+                            </StackPanel>
+                            
+                            <!-- RIGA 2: PULSANTI -->
+                            <StackPanel Grid.Row="1" Orientation="Horizontal" Margin="0,10,0,0">
+                                <Button Content="🔄 Pulisci Filtri" Command="{Binding PulisciFiltriIncassiCommand}" 
+                                        Padding="10,5" Background="#95A5A6" Foreground="White" BorderThickness="0" Cursor="Hand"/>
+                            </StackPanel>
+                        </Grid>
+                    </Border>
+
+                    <!-- DATAGRID INCASSI -->
+                    <DataGrid Grid.Row="2" ItemsSource="{Binding IncassiFiltrati}" 
+                              SelectedItem="{Binding IncassoSelezionato, Mode=TwoWay}"
+                              AutoGenerateColumns="False" CanUserAddRows="False" 
+                              SelectionMode="Single" SelectionUnit="FullRow"
+                              GridLinesVisibility="Horizontal" AlternatingRowBackground="#F8F9FA"
+                              CellEditEnding="IncassiGrid_CellEditEnding"
+                              CurrentCellChanged="IncassiGrid_CurrentCellChanged">
+                        <DataGrid.Columns>
+                            <DataGridTextColumn Header="Cliente" Binding="{Binding NomeCliente}" Width="*" MinWidth="150" IsReadOnly="True"/>
+                            <DataGridTextColumn Header="Anno" Binding="{Binding Anno}" Width="70" IsReadOnly="True"/>
+                            <DataGridTextColumn Header="Mese" Binding="{Binding Mese}" Width="70" IsReadOnly="True"/>
+                            <DataGridTemplateColumn Header="Importo Fattura" Width="130">
+                                <DataGridTemplateColumn.CellTemplate>
+                                    <DataTemplate>
+                                        <TextBlock Text="{Binding Importo, StringFormat='{}{0:N2} €'}" VerticalAlignment="Center"/>
+                                    </DataTemplate>
+                                </DataGridTemplateColumn.CellTemplate>
+                                <DataGridTemplateColumn.CellEditingTemplate>
+                                    <DataTemplate>
+                                        <TextBox Text="{Binding Importo, UpdateSourceTrigger=PropertyChanged}" Background="#FFFACD" />
+                                    </DataTemplate>
+                                </DataGridTemplateColumn.CellEditingTemplate>
+                                <DataGridTemplateColumn.CellStyle>
+                                    <Style TargetType="DataGridCell">
+                                        <Setter Property="Background" Value="#FFFACD"/>
+                                        <Setter Property="Foreground" Value="Black"/>
+                                        <Setter Property="ToolTip" Value="Doppio click per modificare"/>
+                                    </Style>
+                                </DataGridTemplateColumn.CellStyle>
+                            </DataGridTemplateColumn>
+                            <DataGridTemplateColumn Header="% Anticipo" Width="90">
+                                <DataGridTemplateColumn.CellTemplate>
+                                    <DataTemplate>
+                                        <TextBlock Text="{Binding PercentualeAnticipo, StringFormat={}{0:F1}%}" VerticalAlignment="Center"/>
+                                    </DataTemplate>
+                                </DataGridTemplateColumn.CellTemplate>
+                                <DataGridTemplateColumn.CellEditingTemplate>
+                                    <DataTemplate>
+                                        <TextBox Text="{Binding PercentualeAnticipo, UpdateSourceTrigger=PropertyChanged}" Background="#FFFACD" />
+                                    </DataTemplate>
+                                </DataGridTemplateColumn.CellEditingTemplate>
+                                <DataGridTemplateColumn.CellStyle>
+                                    <Style TargetType="DataGridCell">
+                                        <Setter Property="Background" Value="#FFFACD"/>
+                                        <Setter Property="Foreground" Value="Black"/>
+                                        <Setter Property="ToolTip" Value="Doppio click per modificare"/>
+                                    </Style>
+                                </DataGridTemplateColumn.CellStyle>
+                            </DataGridTemplateColumn>
+                            <DataGridTextColumn Header="Imp. Anticipato" Binding="{Binding ImportoAnticipato, StringFormat='{}{0:N2} €'}" Width="130" IsReadOnly="True"/>
+                            <DataGridTemplateColumn Header="Data Inizio Antic." Width="130">
+                                <DataGridTemplateColumn.CellTemplate>
+                                    <DataTemplate>
+                                        <TextBlock Text="{Binding DataInizioAnticipo, StringFormat=dd/MM/yyyy}" VerticalAlignment="Center"/>
+                                    </DataTemplate>
+                                </DataGridTemplateColumn.CellTemplate>
+                                <DataGridTemplateColumn.CellEditingTemplate>
+                                    <DataTemplate>
+                                        <DatePicker SelectedDate="{Binding DataInizioAnticipo, UpdateSourceTrigger=PropertyChanged}" Background="#FFFACD"/>
+                                    </DataTemplate>
+                                </DataGridTemplateColumn.CellEditingTemplate>
+                                <DataGridTemplateColumn.CellStyle>
+                                    <Style TargetType="DataGridCell">
+                                        <Setter Property="Background" Value="#FFFACD"/>
+                                        <Setter Property="Foreground" Value="Black"/>
+                                        <Setter Property="ToolTip" Value="Doppio click per modificare"/>
+                                    </Style>
+                                </DataGridTemplateColumn.CellStyle>
+                            </DataGridTemplateColumn>
+                            <DataGridCheckBoxColumn Header="OK C/C" Binding="{Binding AnticipoGestito_CC, UpdateSourceTrigger=PropertyChanged}" Width="80">
+                                <DataGridCheckBoxColumn.CellStyle>
+                                    <Style TargetType="DataGridCell">
+                                        <Setter Property="Background" Value="#E8F5E9"/>
+                                        <Setter Property="Foreground" Value="Black"/>
+                                        <Setter Property="ToolTip" Value="Anticipo gestito tramite C/C (non in Saldo Previsto)"/>
+                                    </Style>
+                                </DataGridCheckBoxColumn.CellStyle>
+                            </DataGridCheckBoxColumn>
+                            <DataGridTemplateColumn Header="Data Scad. Antic." Width="130">
+                                <DataGridTemplateColumn.CellTemplate>
+                                    <DataTemplate>
+                                        <TextBlock Text="{Binding DataScadenzaAnticipo, StringFormat=dd/MM/yyyy}" VerticalAlignment="Center"/>
+                                    </DataTemplate>
+                                </DataGridTemplateColumn.CellTemplate>
+                                <DataGridTemplateColumn.CellEditingTemplate>
+                                    <DataTemplate>
+                                        <DatePicker SelectedDate="{Binding DataScadenzaAnticipo, UpdateSourceTrigger=PropertyChanged}" Background="#FFFACD"/>
+                                    </DataTemplate>
+                                </DataGridTemplateColumn.CellEditingTemplate>
+                                <DataGridTemplateColumn.CellStyle>
+                                    <Style TargetType="DataGridCell">
+                                        <Setter Property="Background" Value="#FFFACD"/>
+                                        <Setter Property="Foreground" Value="Black"/>
+                                        <Setter Property="ToolTip" Value="Doppio click per modificare"/>
+                                    </Style>
+                                </DataGridTemplateColumn.CellStyle>
+                            </DataGridTemplateColumn>
+                            <DataGridCheckBoxColumn Header="OK C/C chiuso Ant" Binding="{Binding AnticipoChiuso_CC, UpdateSourceTrigger=PropertyChanged}" Width="130">
+                                <DataGridCheckBoxColumn.CellStyle>
+                                    <Style TargetType="DataGridCell">
+                                        <Setter Property="Background" Value="#FFF3E0"/>
+                                        <Setter Property="Foreground" Value="Black"/>
+                                        <Setter Property="ToolTip" Value="Anticipo chiuso tramite C/C (storno non in Saldo Previsto)"/>
+                                    </Style>
+                                </DataGridCheckBoxColumn.CellStyle>
+                            </DataGridCheckBoxColumn>
+                            <DataGridTextColumn Header="Imp. Fatt. a Scadenza" Binding="{Binding ImportoFatturaScadenza, StringFormat='{}{0:N2} €'}" Width="140" IsReadOnly="True"/>
+                            <DataGridTextColumn Header="N. Fattura" Binding="{Binding NumeroFatturaCliente}" Width="120" IsReadOnly="True"/>
+                            <DataGridTextColumn Header="Data Fattura" Binding="{Binding DataFatturaCliente, StringFormat=dd/MM/yyyy}" Width="110" IsReadOnly="True"/>
+                            <DataGridCheckBoxColumn Header="Incassato" Binding="{Binding Incassato, UpdateSourceTrigger=PropertyChanged}" Width="100">
+                                <DataGridCheckBoxColumn.CellStyle>
+                                    <Style TargetType="DataGridCell">
+                                        <Setter Property="Background" Value="#FFFACD"/>
+                                        <Setter Property="Foreground" Value="Black"/>
+                                        <Setter Property="ToolTip" Value="Clicca per modificare"/>
+                                    </Style>
+                                </DataGridCheckBoxColumn.CellStyle>
+                            </DataGridCheckBoxColumn>
+                            <DataGridTemplateColumn Header="Scadenza Fattura" Width="110">
+                                <DataGridTemplateColumn.CellTemplate>
+                                    <DataTemplate>
+                                        <TextBlock Text="{Binding DataScadenza, StringFormat=dd/MM/yyyy}" VerticalAlignment="Center"/>
+                                    </DataTemplate>
+                                </DataGridTemplateColumn.CellTemplate>
+                                <DataGridTemplateColumn.CellEditingTemplate>
+                                    <DataTemplate>
+                                        <DatePicker SelectedDate="{Binding DataScadenza, UpdateSourceTrigger=PropertyChanged}" Background="#FFFACD"/>
+                                    </DataTemplate>
+                                </DataGridTemplateColumn.CellEditingTemplate>
+                                <DataGridTemplateColumn.CellStyle>
+                                    <Style TargetType="DataGridCell">
+                                        <Setter Property="Background" Value="#FFFACD"/>
+                                        <Setter Property="Foreground" Value="Black"/>
+                                        <Setter Property="ToolTip" Value="Doppio click per modificare"/>
+                                    </Style>
+                                </DataGridTemplateColumn.CellStyle>
+                            </DataGridTemplateColumn>
+                            <DataGridTemplateColumn Header="Data Incasso" Width="120">
+                                <DataGridTemplateColumn.CellTemplate>
+                                    <DataTemplate>
+                                        <TextBlock Text="{Binding DataIncassoEffettivo, StringFormat=dd/MM/yyyy}" VerticalAlignment="Center"/>
+                                    </DataTemplate>
+                                </DataGridTemplateColumn.CellTemplate>
+                                <DataGridTemplateColumn.CellEditingTemplate>
+                                    <DataTemplate>
+                                        <DatePicker SelectedDate="{Binding DataIncassoEffettivo, UpdateSourceTrigger=PropertyChanged}" Background="#FFFACD"/>
+                                    </DataTemplate>
+                                </DataGridTemplateColumn.CellEditingTemplate>
+                                <DataGridTemplateColumn.CellStyle>
+                                    <Style TargetType="DataGridCell">
+                                        <Setter Property="Background" Value="#FFFACD"/>
+                                        <Setter Property="Foreground" Value="Black"/>
+                                        <Setter Property="ToolTip" Value="Doppio click per modificare"/>
+                                    </Style>
+                                </DataGridTemplateColumn.CellStyle>
+                            </DataGridTemplateColumn>
+                            <DataGridTemplateColumn Header="Azioni" Width="100">
+                                <DataGridTemplateColumn.CellTemplate>
+                                    <DataTemplate>
+                                        <StackPanel Orientation="Horizontal" HorizontalAlignment="Center">
+                                            <Button Content="✏️" Command="{Binding DataContext.ModificaIncassoCommand, RelativeSource={RelativeSource AncestorType=DataGrid}}" 
+                                                    CommandParameter="{Binding}" Padding="5" Margin="2" Background="#F39C12" 
+                                                    Foreground="White" BorderThickness="0" Cursor="Hand" ToolTip="Modifica"/>
+                                            <Button Content="🗑️" Command="{Binding DataContext.EliminaIncassoCommand, RelativeSource={RelativeSource AncestorType=DataGrid}}" 
+                                                    CommandParameter="{Binding}" Padding="5" Margin="2" Background="#E74C3C" 
+                                                    Foreground="White" BorderThickness="0" Cursor="Hand" ToolTip="Elimina"/>
+                                        </StackPanel>
+                                    </DataTemplate>
+                                </DataGridTemplateColumn.CellTemplate>
+                            </DataGridTemplateColumn>
+                        </DataGrid.Columns>
+                    </DataGrid>
+                </Grid>
+            </TabItem>
+
+            <!-- TAB PAGAMENTI -->
+            <TabItem Header="📤 Pagamenti">
+                <Grid Margin="15">
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto"/> <!-- Pulsanti azioni -->
+                        <RowDefinition Height="Auto"/> <!-- Filtri -->
+                        <RowDefinition Height="*"/>    <!-- DataGrid -->
+                    </Grid.RowDefinitions>
+
+                    <!-- PULSANTI AZIONI PAGAMENTI -->
+                    <StackPanel Grid.Row="0" Orientation="Horizontal" Margin="0,0,0,10">
+                        <Button Content="➕ Nuovo Pagamento" Command="{Binding NuovoPagamentoCommand}" 
+                                Padding="12,6" Background="#27AE60" Foreground="White" BorderThickness="0" Cursor="Hand"/>
+                        <Button Content="📅 Nuovo Pag. Mensili" Command="{Binding NuovoPagamentoMensileCommand}" 
+                                Padding="12,6" Margin="10,0,0,0" Background="#9B59B6" Foreground="White" BorderThickness="0" Cursor="Hand"/>
+                        <Button Content="💰 Finanziamento Import" Command="{Binding ApriFinanziamentoImportCommand}" 
+                                Padding="12,6" Margin="10,0,0,0" Background="#E67E22" Foreground="White" BorderThickness="0" Cursor="Hand"/>
+                        <Button Content="✅ Segna Pagato" Command="{Binding SegnaPagatoCommand}" 
+                                Padding="12,6" Margin="10,0,0,0" Background="#3498DB" Foreground="White" BorderThickness="0" Cursor="Hand"/>
+                        <Button Content="📥 Importa da Excel" Command="{Binding ImportaPagamentiExcelCommand}" 
+                                Padding="12,6" Margin="10,0,0,0" Background="#9B59B6" Foreground="White" BorderThickness="0" Cursor="Hand"/>
+                        <Button Content="📊 Export Excel" Command="{Binding ExportPagamentiExcelCommand}" 
+                                Padding="12,6" Margin="10,0,0,0" Background="#27AE60" Foreground="White" BorderThickness="0" Cursor="Hand"/>
+                    </StackPanel>
+
+                    <!-- FILTRI PAGAMENTI -->
+                    <Border Grid.Row="1" Background="#F8F9FA" CornerRadius="5" Padding="15" Margin="0,0,0,10">
+                        <Grid>
+                            <Grid.RowDefinitions>
+                                <RowDefinition Height="Auto"/>
+                                <RowDefinition Height="Auto"/>
+                            </Grid.RowDefinitions>
+                            
+                            <!-- RIGA 1: FILTRI -->
+                            <StackPanel Grid.Row="0" Orientation="Horizontal">
+                                <StackPanel Margin="0,0,10,0">
+                                    <TextBlock Text="Fornitore" FontSize="11" Foreground="#7F8C8D" Margin="0,0,0,3"/>
+                                    <TextBox Text="{Binding FiltroFornitore, UpdateSourceTrigger=PropertyChanged}" 
+                                             Width="150" Padding="5"/>
+                                </StackPanel>
+                                
+                                <StackPanel Margin="0,0,10,0">
+                                    <TextBlock Text="Anno" FontSize="11" Foreground="#7F8C8D" Margin="0,0,0,3"/>
+                                    <TextBox Text="{Binding FiltroAnnoPagamenti, UpdateSourceTrigger=PropertyChanged}" 
+                                             Width="80" Padding="5"/>
+                                </StackPanel>
+                                
+                                <StackPanel Margin="0,0,10,0">
+                                    <TextBlock Text="Mese" FontSize="11" Foreground="#7F8C8D" Margin="0,0,0,3"/>
+                                    <TextBox Text="{Binding FiltroMesePagamenti, UpdateSourceTrigger=PropertyChanged}" 
+                                             Width="80" Padding="5"/>
+                                </StackPanel>
+                                
+                                <StackPanel Margin="0,0,10,0">
+                                    <TextBlock Text="Pagato" FontSize="11" Foreground="#7F8C8D" Margin="0,0,0,3"/>
+                                    <ComboBox SelectedValue="{Binding FiltroPagato}" SelectedValuePath="Content" Width="100" Padding="5">
+                                        <ComboBoxItem Content="Tutti"/>
+                                        <ComboBoxItem Content="Si"/>
+                                        <ComboBoxItem Content="No"/>
+                                    </ComboBox>
+                                </StackPanel>
+                            </StackPanel>
+                            
+                            <!-- RIGA 2: PULSANTI -->
+                            <StackPanel Grid.Row="1" Orientation="Horizontal" Margin="0,10,0,0">
+                                <Button Content="🔄 Pulisci Filtri" Command="{Binding PulisciFiltriPagamentiCommand}" 
+                                        Padding="10,5" Background="#95A5A6" Foreground="White" BorderThickness="0" Cursor="Hand"/>
+                            </StackPanel>
+                        </Grid>
+                    </Border>
+
+                    <!-- DATAGRID PAGAMENTI -->
+                    <DataGrid Grid.Row="2" ItemsSource="{Binding PagamentiFiltrati}" 
+                              SelectedItem="{Binding PagamentoSelezionato, Mode=TwoWay}"
+                              AutoGenerateColumns="False" CanUserAddRows="False" 
+                              SelectionMode="Single" SelectionUnit="FullRow"
+                              GridLinesVisibility="Horizontal" AlternatingRowBackground="#F8F9FA"
+                              CellEditEnding="PagamentiGrid_CellEditEnding"
+                              CurrentCellChanged="PagamentiGrid_CurrentCellChanged">
+                        <DataGrid.Columns>
+                            <DataGridTextColumn Header="Fornitore" Binding="{Binding NomeFornitore}" Width="*" MinWidth="150" IsReadOnly="True"/>
+                            <DataGridTextColumn Header="Anno" Binding="{Binding Anno}" Width="70" IsReadOnly="True"/>
+                            <DataGridTextColumn Header="Mese" Binding="{Binding Mese}" Width="70" IsReadOnly="True"/>
+                            <DataGridTemplateColumn Header="Importo Fattura" Width="130">
+                                <DataGridTemplateColumn.CellTemplate>
+                                    <DataTemplate>
+                                        <TextBlock Text="{Binding Importo, StringFormat='{}{0:N2} €'}" VerticalAlignment="Center"/>
+                                    </DataTemplate>
+                                </DataGridTemplateColumn.CellTemplate>
+                                <DataGridTemplateColumn.CellEditingTemplate>
+                                    <DataTemplate>
+                                        <TextBox Text="{Binding Importo, UpdateSourceTrigger=PropertyChanged}" Background="#FFFACD" />
+                                    </DataTemplate>
+                                </DataGridTemplateColumn.CellEditingTemplate>
+                                <DataGridTemplateColumn.CellStyle>
+                                    <Style TargetType="DataGridCell">
+                                        <Setter Property="Background" Value="#FFFACD"/>
+                                        <Setter Property="Foreground" Value="Black"/>
+                                        <Setter Property="ToolTip" Value="Doppio click per modificare"/>
+                                    </Style>
+                                </DataGridTemplateColumn.CellStyle>
+                            </DataGridTemplateColumn>
+                            <DataGridTextColumn Header="N. Fattura" Binding="{Binding NumeroFatturaFornitore}" Width="120" IsReadOnly="True"/>
+                            <DataGridTextColumn Header="Data Fattura" Binding="{Binding DataFatturaFornitore, StringFormat=dd/MM/yyyy}" Width="110" IsReadOnly="True"/>
+                            <DataGridCheckBoxColumn Header="Pagato" Binding="{Binding Pagato, UpdateSourceTrigger=PropertyChanged}" Width="100">
+                                <DataGridCheckBoxColumn.CellStyle>
+                                    <Style TargetType="DataGridCell">
+                                        <Setter Property="Background" Value="#FFFACD"/>
+                                        <Setter Property="Foreground" Value="Black"/>
+                                        <Setter Property="ToolTip" Value="Clicca per modificare"/>
+                                    </Style>
+                                </DataGridCheckBoxColumn.CellStyle>
+                            </DataGridCheckBoxColumn>
+                            <DataGridTemplateColumn Header="Scadenza Fattura" Width="110">
+                                <DataGridTemplateColumn.CellTemplate>
+                                    <DataTemplate>
+                                        <TextBlock Text="{Binding DataScadenza, StringFormat=dd/MM/yyyy}" VerticalAlignment="Center"/>
+                                    </DataTemplate>
+                                </DataGridTemplateColumn.CellTemplate>
+                                <DataGridTemplateColumn.CellEditingTemplate>
+                                    <DataTemplate>
+                                        <DatePicker SelectedDate="{Binding DataScadenza, UpdateSourceTrigger=PropertyChanged}" Background="#FFFACD"/>
+                                    </DataTemplate>
+                                </DataGridTemplateColumn.CellEditingTemplate>
+                                <DataGridTemplateColumn.CellStyle>
+                                    <Style TargetType="DataGridCell">
+                                        <Setter Property="Background" Value="#FFFACD"/>
+                                        <Setter Property="Foreground" Value="Black"/>
+                                        <Setter Property="ToolTip" Value="Doppio click per modificare"/>
+                                    </Style>
+                                </DataGridTemplateColumn.CellStyle>
+                            </DataGridTemplateColumn>
+                            <DataGridTemplateColumn Header="Data Pagamento" Width="120">
+                                <DataGridTemplateColumn.CellTemplate>
+                                    <DataTemplate>
+                                        <TextBlock Text="{Binding DataPagamentoEffettivo, StringFormat=dd/MM/yyyy}" VerticalAlignment="Center"/>
+                                    </DataTemplate>
+                                </DataGridTemplateColumn.CellTemplate>
+                                <DataGridTemplateColumn.CellEditingTemplate>
+                                    <DataTemplate>
+                                        <DatePicker SelectedDate="{Binding DataPagamentoEffettivo, UpdateSourceTrigger=PropertyChanged}" Background="#FFFACD"/>
+                                    </DataTemplate>
+                                </DataGridTemplateColumn.CellEditingTemplate>
+                                <DataGridTemplateColumn.CellStyle>
+                                    <Style TargetType="DataGridCell">
+                                        <Setter Property="Background" Value="#FFFACD"/>
+                                        <Setter Property="Foreground" Value="Black"/>
+                                        <Setter Property="ToolTip" Value="Doppio click per modificare"/>
+                                    </Style>
+                                </DataGridTemplateColumn.CellStyle>
+                            </DataGridTemplateColumn>
+                            <DataGridTemplateColumn Header="Azioni" Width="100">
+                                <DataGridTemplateColumn.CellTemplate>
+                                    <DataTemplate>
+                                        <StackPanel Orientation="Horizontal" HorizontalAlignment="Center">
+                                            <Button Content="✏️" Command="{Binding DataContext.ModificaPagamentoCommand, RelativeSource={RelativeSource AncestorType=DataGrid}}" 
+                                                    CommandParameter="{Binding}" Padding="5" Margin="2" Background="#F39C12" 
+                                                    Foreground="White" BorderThickness="0" Cursor="Hand" ToolTip="Modifica"/>
+                                            <Button Content="🗑️" Command="{Binding DataContext.EliminaPagamentoCommand, RelativeSource={RelativeSource AncestorType=DataGrid}}" 
+                                                    CommandParameter="{Binding}" Padding="5" Margin="2" Background="#E74C3C" 
+                                                    Foreground="White" BorderThickness="0" Cursor="Hand" ToolTip="Elimina"/>
+                                        </StackPanel>
+                                    </DataTemplate>
+                                </DataGridTemplateColumn.CellTemplate>
+                            </DataGridTemplateColumn>
+                        </DataGrid.Columns>
+                    </DataGrid>
+                </Grid>
+            </TabItem>
+
+            <!-- TAB SALDO PREVISTO -->
+            <TabItem Header="📊 Saldo Previsto">
+                <Grid Margin="15">
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="*"/>
+                    </Grid.RowDefinitions>
+
+                    <!-- HEADER E PULSANTE EXPORT -->
+                    <Grid Grid.Row="0" Margin="0,0,0,15">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*"/>
+                            <ColumnDefinition Width="Auto"/>
+                        </Grid.ColumnDefinitions>
+                        
+                        <TextBlock Grid.Column="0" Text="💰 Previsione Flusso di Cassa" 
+                                   FontSize="16" FontWeight="Bold" Foreground="#2C3E50" VerticalAlignment="Center"/>
+                        
+                        <Button Grid.Column="1" Content="📊 Export Excel" Command="{Binding ExportSaldoPrevisoExcelCommand}" 
+                                Padding="12,6" Background="#27AE60" Foreground="White" BorderThickness="0" Cursor="Hand"/>
+                    </Grid>
+
+                    <!-- DATAGRID MOVIMENTI PREVISTI -->
+                    <DataGrid Grid.Row="2" ItemsSource="{Binding MovimentiPrevisti}" 
+                              AutoGenerateColumns="False" CanUserAddRows="False" 
+                              IsReadOnly="True" SelectionMode="Single"
+                              GridLinesVisibility="Horizontal" AlternatingRowBackground="#F8F9FA">
+                        <DataGrid.RowStyle>
+                            <Style TargetType="DataGridRow">
+                                <Style.Triggers>
+                                    <!-- Evidenzia in ARANCIONE le righe dove si sta usando il FIDO (saldo negativo) -->
+                                    <DataTrigger Binding="{Binding UtilizzoFido}" Value="True">
+                                        <Setter Property="Background" Value="#FFF3E0"/>
+                                        <Setter Property="BorderBrush" Value="#F57C00"/>
+                                        <Setter Property="BorderThickness" Value="2,0,0,0"/>
+                                    </DataTrigger>
+                                </Style.Triggers>
+                            </Style>
+                        </DataGrid.RowStyle>
+                        <DataGrid.Columns>
+                            <DataGridTextColumn Header="Data Scadenza" Binding="{Binding DataScadenza, StringFormat=dd/MM/yyyy}" Width="120"/>
+                            <DataGridTextColumn Header="Tipo" Width="100">
+                                <DataGridTextColumn.Binding>
+                                    <MultiBinding StringFormat="{}{0} {1}">
+                                        <Binding Path="IconaTipo"/>
+                                        <Binding Path="Tipo"/>
+                                    </MultiBinding>
+                                </DataGridTextColumn.Binding>
+                            </DataGridTextColumn>
+                            <DataGridTextColumn Header="Descrizione" Binding="{Binding Descrizione}" Width="*" MinWidth="200"/>
+                            <DataGridTextColumn Header="Importo" Binding="{Binding Importo, StringFormat='{}{0:N2} €'}" Width="120"/>
+                            <DataGridTextColumn Header="Saldo Progressivo" Binding="{Binding SaldoProgressivo, StringFormat='{}{0:N2} €'}" Width="150">
+                                <DataGridTextColumn.ElementStyle>
+                                    <Style TargetType="TextBlock">
+                                        <Setter Property="FontWeight" Value="Bold"/>
+                                    </Style>
+                                </DataGridTextColumn.ElementStyle>
+                            </DataGridTextColumn>
+                            <DataGridTextColumn Header="Stato" Width="120" Binding="{Binding StatoFido}">
+                                <DataGridTextColumn.ElementStyle>
+                                    <Style TargetType="TextBlock">
+                                        <Setter Property="FontWeight" Value="SemiBold"/>
+                                        <Setter Property="Foreground" Value="Green"/>
+                                        <Style.Triggers>
+                                            <DataTrigger Binding="{Binding UtilizzoFido}" Value="True">
+                                                <Setter Property="Foreground" Value="#F57C00"/>
+                                            </DataTrigger>
+                                        </Style.Triggers>
+                                    </Style>
+                                </DataGridTextColumn.ElementStyle>
+                            </DataGridTextColumn>
+                        </DataGrid.Columns>
+                        <DataGrid.Resources>
+                            <Style TargetType="DataGridCell">
+                                <Style.Triggers>
+                                    <DataTrigger Binding="{Binding Tipo}" Value="Incasso">
+                                        <Setter Property="Foreground" Value="#27AE60"/>
+                                    </DataTrigger>
+                                    <DataTrigger Binding="{Binding Tipo}" Value="Pagamento">
+                                        <Setter Property="Foreground" Value="#E74C3C"/>
+                                    </DataTrigger>
+                                    <DataTrigger Binding="{Binding Tipo}" Value="Anticipo">
+                                        <Setter Property="Foreground" Value="#9B59B6"/>
+                                    </DataTrigger>
+                                </Style.Triggers>
+                            </Style>
+                        </DataGrid.Resources>
+                    </DataGrid>
+                </Grid>
+            </TabItem>
+
+            <!-- TAB SALDO PREVISTO PIVOT -->
+            <TabItem Header="📊 Saldo Previsto Pivot" x:Name="TabSaldoPivot">
+                <Grid Margin="15">
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="*"/>
+                    </Grid.RowDefinitions>
+
+                    <!-- HEADER E PULSANTE EXPORT -->
+                    <Grid Grid.Row="0" Margin="0,0,0,15">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*"/>
+                            <ColumnDefinition Width="Auto"/>
+                        </Grid.ColumnDefinitions>
+                        
+                        <TextBlock Grid.Column="0" Text="💰 Vista Pivot Mensile - Flusso di Cassa" 
+                                   FontSize="16" FontWeight="Bold" Foreground="#2C3E50" VerticalAlignment="Center"/>
+                        
+                        <Button Grid.Column="1" Content="📊 Export Excel" Command="{Binding ExportSaldoPivotExcelCommand}" 
+                                Padding="12,6" Background="#27AE60" Foreground="White" BorderThickness="0" Cursor="Hand"/>
+                    </Grid>
+
+                    <!-- PIVOT GRID -->
+                    <ScrollViewer Grid.Row="1" HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Auto">
+                        <Grid x:Name="PivotGrid">
+                            <Grid.RowDefinitions>
+                                <RowDefinition Height="Auto"/> <!-- Fatturato Anticipato -->
+                                <RowDefinition Height="Auto"/> <!-- Residuo Anticipabile -->
+                                <RowDefinition Height="Auto"/> <!-- Header -->
+                                <RowDefinition Height="Auto"/> <!-- Saldo Corrente -->
+                                <RowDefinition Height="Auto"/> <!-- Incassi -->
+                                <RowDefinition Height="Auto"/> <!-- Pagamenti -->
+                                <RowDefinition Height="Auto"/> <!-- Saldo Disponibile -->
+                            </Grid.RowDefinitions>
+                            
+                            <!-- Dinamicamente popolato nel code-behind -->
+                        </Grid>
+                    </ScrollViewer>
+                </Grid>
+            </TabItem>
+        </TabControl>
+
+        <!-- PULSANTE AGGIORNA -->
+        <StackPanel Grid.Row="3" Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,15,0,0">
+            <Button Content="🔄 Aggiorna Tutto" Command="{Binding AggiornaCommand}" 
+                    Padding="20,10" Background="#95A5A6" Foreground="White" BorderThickness="0" Cursor="Hand"/>
+        </StackPanel>
+    </Grid>
+</UserControl>
+

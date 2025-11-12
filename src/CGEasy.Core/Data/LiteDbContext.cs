@@ -133,6 +133,7 @@ namespace CGEasy.Core.Data
             mapper.Entity<BancaPagamento>().Id(x => x.Id, autoId: true);
             mapper.Entity<BancaUtilizzoAnticipo>().Id(x => x.Id, autoId: true);
             mapper.Entity<BancaSaldoGiornaliero>().Id(x => x.Id, autoId: true);
+            mapper.Entity<FinanziamentoImport>().Id(x => x.Id, autoId: true);
 
             // Connection string per accesso condiviso (multi-utente)
             var connectionString = new ConnectionString
@@ -306,6 +307,13 @@ namespace CGEasy.Core.Data
                 var bancaSaldoGiornalieroCol = _database.GetCollection<BancaSaldoGiornaliero>("banca_saldo_giornaliero");
                 bancaSaldoGiornalieroCol.EnsureIndex(x => x.BancaId);
                 bancaSaldoGiornalieroCol.EnsureIndex(x => x.Data);
+
+                // Finanziamenti Import
+                var finanziamentiImportCol = _database.GetCollection<FinanziamentoImport>("finanziamenti_import");
+                finanziamentiImportCol.EnsureIndex(x => x.BancaId);
+                finanziamentiImportCol.EnsureIndex(x => x.DataInizio);
+                finanziamentiImportCol.EnsureIndex(x => x.DataFine);
+                finanziamentiImportCol.EnsureIndex(x => x.UtenteId);
             }
         }
 
@@ -428,6 +436,12 @@ namespace CGEasy.Core.Data
         /// </summary>
         public ILiteCollection<BancaSaldoGiornaliero> BancaSaldoGiornaliero =>
             _database.GetCollection<BancaSaldoGiornaliero>("banca_saldo_giornaliero");
+
+        /// <summary>
+        /// Collection Finanziamenti Import
+        /// </summary>
+        public ILiteCollection<FinanziamentoImport> FinanziamentoImport =>
+            _database.GetCollection<FinanziamentoImport>("finanziamenti_import");
 
         // ===== UTILITY METHODS =====
 
