@@ -49,6 +49,29 @@ public class BilancioContabileRepository
             .ToList();
     }
 
+    /// <summary>
+    /// 🎯 Ottiene bilanci per Cliente+Periodo+DESCRIZIONE specifica
+    /// </summary>
+    public List<BilancioContabile> GetByClienteAndPeriodoAndDescrizione(int clienteId, int mese, int anno, string? descrizione)
+    {
+        // Normalizza la descrizione (null = stringa vuota)
+        var desc = descrizione?.Trim() ?? "";
+        
+        // ✅ Prima prendi tutti per cliente+periodo, poi filtra in memoria per descrizione
+        // (LiteDB non supporta .Trim() nelle query)
+        var bilanci = _context.BilancioContabile
+            .Find(b => b.ClienteId == clienteId && 
+                       b.Mese == mese && 
+                       b.Anno == anno)
+            .ToList();
+        
+        // Filtra in memoria per descrizione normalizzata
+        return bilanci
+            .Where(b => (b.DescrizioneBilancio?.Trim() ?? "") == desc)
+            .OrderBy(b => b.CodiceMastrino)
+            .ToList();
+    }
+
     public int Insert(BilancioContabile bilancio)
     {
         var id = _context.BilancioContabile.Insert(bilancio);
@@ -87,6 +110,7 @@ public class BilancioContabileRepository
 
     public int DeleteByClienteAndPeriodo(int clienteId, int mese, int anno)
     {
+        // ⚠️ DEPRECATO: Non considera la descrizione, usa DeleteByClienteAndPeriodoAndDescrizione
         // ✅ Usa DeleteMany che è molto più efficiente e non blocca il database
         var deleted = _context.BilancioContabile.DeleteMany(b => 
             b.ClienteId == clienteId && 
@@ -95,6 +119,37 @@ public class BilancioContabileRepository
         
         _context.Checkpoint(); // Forza il flush su disco
         return deleted;
+    }
+
+    /// <summary>
+    /// 🎯 NUOVO METODO: Elimina bilanci per Cliente+Periodo+DESCRIZIONE
+    /// La descrizione è il vero identificativo univoco del bilancio!
+    /// </summary>
+    public int DeleteByClienteAndPeriodoAndDescrizione(int clienteId, int mese, int anno, string? descrizione)
+    {
+        // Normalizza la descrizione (null = stringa vuota)
+        var desc = descrizione?.Trim() ?? "";
+        
+        // ✅ Prima trova tutti per cliente+periodo, poi filtra in memoria per descrizione
+        // (LiteDB non supporta .Trim() nelle query DeleteMany)
+        var bilanciDaEliminare = _context.BilancioContabile
+            .Find(b => b.ClienteId == clienteId && 
+                       b.Mese == mese && 
+                       b.Anno == anno)
+            .Where(b => (b.DescrizioneBilancio?.Trim() ?? "") == desc)
+            .Select(b => b.Id)
+            .ToList();
+        
+        // Elimina per ID
+        int count = 0;
+        foreach (var id in bilanciDaEliminare)
+        {
+            if (_context.BilancioContabile.Delete(id))
+                count++;
+        }
+        
+        _context.Checkpoint(); // Forza il flush su disco
+        return count;
     }
 
     public List<int> GetDistinctAnni()
@@ -119,69 +174,99 @@ public class BilancioContabileRepository
 
     public List<BilancioGruppo> GetGruppi()
     {
-        var allBilanci = _context.BilancioContabile.FindAll().ToList();
-        
-        // IMPORTANTE: Raggruppa SOLO per ClienteId, Mese, Anno
-        // NON raggruppare per DataImport/ImportedByName altrimenti righe aggiunte manualmente
-        // creano gruppi separati!
-        var gruppi = allBilanci
-            .GroupBy(b => new { b.ClienteId, b.Mese, b.Anno })
-            .Select(g =>
-            {
-                // Usa i valori della PRIMA riga del gruppo (ordinata per data import più vecchia)
-                var primaRiga = g.OrderBy(x => x.DataImport).First();
-                
-                return new BilancioGruppo
+        try
+        {
+            // ✅ IMPORTANTE: Materializza SUBITO con ToList() per evitare conflitti del reader in modalità Shared
+            var allBilanci = _context.BilancioContabile.FindAll().ToList();
+            
+            // 🎯 NUOVA LOGICA: Raggruppa per ClienteId, Mese, Anno E DESCRIZIONE
+            // Se importi stesso cliente/periodo con descrizione diversa = bilancio diverso
+            var gruppi = allBilanci
+                .GroupBy(b => new { 
+                    b.ClienteId, 
+                    b.Mese, 
+                    b.Anno, 
+                    Descrizione = b.DescrizioneBilancio ?? "" // Gestisce descrizioni null
+                })
+                .Select(g =>
                 {
-                    ClienteId = g.Key.ClienteId,
-                    ClienteNome = primaRiga.ClienteNome,
-                    Mese = g.Key.Mese,
-                    Anno = g.Key.Anno,
-                    Descrizione = primaRiga.DescrizioneBilancio,
-                    DataImport = primaRiga.DataImport,
-                    ImportedByName = primaRiga.ImportedByName,
-                    NumeroRighe = g.Count(),
-                    TotaleImporti = g.Sum(b => b.Importo)
-                };
-            })
-            .OrderByDescending(g => g.Anno)
-            .ThenByDescending(g => g.Mese)
-            .ThenBy(g => g.ClienteNome)
-            .ToList();
-        
-        return gruppi;
+                    // Usa i valori della PRIMA riga del gruppo (ordinata per data import più vecchia)
+                    var primaRiga = g.OrderBy(x => x.DataImport).First();
+                    
+                    return new BilancioGruppo
+                    {
+                        ClienteId = g.Key.ClienteId,
+                        ClienteNome = primaRiga.ClienteNome,
+                        Mese = g.Key.Mese,
+                        Anno = g.Key.Anno,
+                        Descrizione = primaRiga.DescrizioneBilancio,
+                        DataImport = primaRiga.DataImport,
+                        ImportedByName = primaRiga.ImportedByName,
+                        NumeroRighe = g.Count(),
+                        TotaleImporti = g.Sum(b => b.Importo)
+                    };
+                })
+                .OrderByDescending(g => g.Anno)
+                .ThenByDescending(g => g.Mese)
+                .ThenBy(g => g.ClienteNome)
+                .ToList();
+            
+            return gruppi;
+        }
+        catch (Exception ex)
+        {
+            // Log dell'errore per debug
+            System.Diagnostics.Debug.WriteLine($"Errore GetGruppi: {ex.Message}");
+            throw;
+        }
     }
 
     public List<BilancioGruppo> GetGruppiByCliente(int clienteId)
     {
-        var bilanci = _context.BilancioContabile
-            .Find(b => b.ClienteId == clienteId)
-            .ToList();
-        
-        var gruppi = bilanci
-            .GroupBy(b => new { b.ClienteId, b.Mese, b.Anno })
-            .Select(g =>
-            {
-                var primaRiga = g.OrderBy(x => x.DataImport).First();
-                
-                return new BilancioGruppo
+        try
+        {
+            // ✅ IMPORTANTE: Materializza SUBITO con ToList() per evitare conflitti del reader in modalità Shared
+            var bilanci = _context.BilancioContabile
+                .Find(b => b.ClienteId == clienteId)
+                .ToList();
+            
+            // 🎯 NUOVA LOGICA: Raggruppa per ClienteId, Mese, Anno E DESCRIZIONE
+            var gruppi = bilanci
+                .GroupBy(b => new { 
+                    b.ClienteId, 
+                    b.Mese, 
+                    b.Anno, 
+                    Descrizione = b.DescrizioneBilancio ?? "" // Gestisce descrizioni null
+                })
+                .Select(g =>
                 {
-                    ClienteId = g.Key.ClienteId,
-                    ClienteNome = primaRiga.ClienteNome,
-                    Mese = g.Key.Mese,
-                    Anno = g.Key.Anno,
-                    Descrizione = primaRiga.DescrizioneBilancio,
-                    DataImport = primaRiga.DataImport,
-                    ImportedByName = primaRiga.ImportedByName,
-                    NumeroRighe = g.Count(),
-                    TotaleImporti = g.Sum(b => b.Importo)
-                };
-            })
-            .OrderByDescending(g => g.Anno)
-            .ThenByDescending(g => g.Mese)
-            .ToList();
-        
-        return gruppi;
+                    var primaRiga = g.OrderBy(x => x.DataImport).First();
+                    
+                    return new BilancioGruppo
+                    {
+                        ClienteId = g.Key.ClienteId,
+                        ClienteNome = primaRiga.ClienteNome,
+                        Mese = g.Key.Mese,
+                        Anno = g.Key.Anno,
+                        Descrizione = primaRiga.DescrizioneBilancio,
+                        DataImport = primaRiga.DataImport,
+                        ImportedByName = primaRiga.ImportedByName,
+                        NumeroRighe = g.Count(),
+                        TotaleImporti = g.Sum(b => b.Importo)
+                    };
+                })
+                .OrderByDescending(g => g.Anno)
+                .ThenByDescending(g => g.Mese)
+                .ToList();
+            
+            return gruppi;
+        }
+        catch (Exception ex)
+        {
+            // Log dell'errore per debug
+            System.Diagnostics.Debug.WriteLine($"Errore GetGruppiByCliente: {ex.Message}");
+            throw;
+        }
     }
 }
 

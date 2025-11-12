@@ -85,7 +85,7 @@ public partial class GraficoMargineViewModel : ObservableObject
             var valori = OttieniValori(_datiMargine.SaldoCorrente, isTutteLeBanche);
             var valoriDouble = valori.Select(v => (double)v).ToArray();
             var scatter = Plot.Add.Scatter(x, valoriDouble);
-            scatter.Label = "Saldo Corrente";
+            scatter.LegendText = "Saldo Corrente";
             scatter.Color = ScottPlot.Colors.DeepSkyBlue;
             scatter.LineWidth = 3;
             scatter.MarkerSize = 8;
@@ -108,7 +108,7 @@ public partial class GraficoMargineViewModel : ObservableObject
             var valori = OttieniValori(_datiMargine.SaldoDisponibile, isTutteLeBanche);
             var valoriDouble = valori.Select(v => (double)v).ToArray();
             var scatter = Plot.Add.Scatter(x, valoriDouble);
-            scatter.Label = "Saldo Disponibile";
+            scatter.LegendText = "Saldo Disponibile";
             scatter.Color = ScottPlot.Colors.Blue;
             scatter.LineWidth = 3;
             scatter.MarkerSize = 8;
@@ -131,7 +131,7 @@ public partial class GraficoMargineViewModel : ObservableObject
             var valori = OttieniValori(_datiMargine.FatturatoAnticipato, isTutteLeBanche);
             var valoriDouble = valori.Select(v => (double)v).ToArray();
             var scatter = Plot.Add.Scatter(x, valoriDouble);
-            scatter.Label = "Fatturato Anticipato";
+            scatter.LegendText = "Fatturato Anticipato";
             scatter.Color = ScottPlot.Colors.Purple;
             scatter.LineWidth = 3;
             scatter.MarkerSize = 8;
@@ -154,7 +154,7 @@ public partial class GraficoMargineViewModel : ObservableObject
             var valori = OttieniValori(_datiMargine.ResiduoAnticipabile, isTutteLeBanche);
             var valoriDouble = valori.Select(v => (double)v).ToArray();
             var scatter = Plot.Add.Scatter(x, valoriDouble);
-            scatter.Label = "Residuo Anticipabile";
+            scatter.LegendText = "Residuo Anticipabile";
             scatter.Color = ScottPlot.Colors.Orange;
             scatter.LineWidth = 3;
             scatter.MarkerSize = 8;
@@ -177,7 +177,7 @@ public partial class GraficoMargineViewModel : ObservableObject
             var valori = OttieniValori(_datiMargine.Incassi, isTutteLeBanche);
             var valoriDouble = valori.Select(v => (double)v).ToArray();
             var scatter = Plot.Add.Scatter(x, valoriDouble);
-            scatter.Label = "Incassi";
+            scatter.LegendText = "Incassi";
             scatter.Color = ScottPlot.Colors.Green;
             scatter.LineWidth = 3;
             scatter.MarkerSize = 8;
@@ -200,7 +200,7 @@ public partial class GraficoMargineViewModel : ObservableObject
             var valori = OttieniValori(_datiMargine.Pagamenti, isTutteLeBanche);
             var valoriDouble = valori.Select(v => (double)v).ToArray();
             var scatter = Plot.Add.Scatter(x, valoriDouble);
-            scatter.Label = "Pagamenti";
+            scatter.LegendText = "Pagamenti";
             scatter.Color = ScottPlot.Colors.Red;
             scatter.LineWidth = 3;
             scatter.MarkerSize = 8;
@@ -223,7 +223,7 @@ public partial class GraficoMargineViewModel : ObservableObject
             var valori = OttieniValori(_datiMargine.UtilizzoFidoCC, isTutteLeBanche);
             var valoriDouble = valori.Select(v => (double)v).ToArray();
             var scatter = Plot.Add.Scatter(x, valoriDouble);
-            scatter.Label = "Utilizzo Fido C/C";
+            scatter.LegendText = "Utilizzo Fido C/C";
             scatter.Color = ScottPlot.Colors.DarkRed;
             scatter.LineWidth = 3;
             scatter.MarkerSize = 8;
@@ -251,7 +251,7 @@ public partial class GraficoMargineViewModel : ObservableObject
 
         // Legenda
         Plot.Legend.IsVisible = true;
-        Plot.Legend.Location = ScottPlot.Alignment.UpperRight;
+        Plot.Legend.Alignment = ScottPlot.Alignment.UpperRight;
         Plot.Legend.FontSize = 12;
 
         // Griglia

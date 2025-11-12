@@ -1,6 +1,9 @@
+using System.ComponentModel;
+using System.Runtime.CompilerServices;
+
 namespace CGEasy.Core.Models;
 
-public class BilancioContabile
+public class BilancioContabile : INotifyPropertyChanged
 {
     public int Id { get; set; }
     public int ClienteId { get; set; }
@@ -15,6 +18,21 @@ public class BilancioContabile
     public DateTime DataImport { get; set; }
     public int ImportedBy { get; set; }
     public string ImportedByName { get; set; } = string.Empty;
+    
+    // Proprietà per checkbox selezione
+    private bool _isSelected;
+    public bool IsSelected
+    {
+        get => _isSelected;
+        set
+        {
+            if (_isSelected != value)
+            {
+                _isSelected = value;
+                OnPropertyChanged();
+            }
+        }
+    }
 
     // Proprietà calcolate per UI
     public string PeriodoDisplay => $"{Mese:00}/{Anno}";
@@ -36,5 +54,13 @@ public class BilancioContabile
         _ => ""
     };
     public string PeriodoCompleto => $"{MeseNome} {Anno}";
+    
+    public event PropertyChangedEventHandler? PropertyChanged;
+    
+    protected void OnPropertyChanged([CallerMemberName] string? propertyName = null)
+    {
+        PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
+    }
 }
+
 
