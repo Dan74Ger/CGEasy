@@ -50,6 +50,48 @@ public class BilancioTemplateRepository
             .ToList();
     }
 
+    /// <summary>
+    /// Ottiene i template per cliente, periodo E descrizione (per supportare più template con stessa data)
+    /// </summary>
+    public List<BilancioTemplate> GetByClienteAndPeriodoAndDescrizione(int clienteId, int mese, int anno, string? descrizione)
+    {
+        var desc = descrizione?.Trim() ?? "";
+        var templates = _context.BilancioTemplate
+            .Find(b => b.ClienteId == clienteId &&
+                       b.Mese == mese &&
+                       b.Anno == anno)
+            .ToList();
+        return templates
+            .Where(b => (b.DescrizioneBilancio?.Trim() ?? "") == desc)
+            .OrderByCodiceMastrinoNumerico(b => b.CodiceMastrino)
+            .ToList();
+    }
+
+    /// <summary>
+    /// Elimina i template per cliente, periodo E descrizione
+    /// </summary>
+    public int DeleteByClienteAndPeriodoAndDescrizione(int clienteId, int mese, int anno, string? descrizione)
+    {
+        var desc = descrizione?.Trim() ?? "";
+        var templatesDaEliminare = _context.BilancioTemplate
+            .Find(b => b.ClienteId == clienteId &&
+                       b.Mese == mese &&
+                       b.Anno == anno)
+            .Where(b => (b.DescrizioneBilancio?.Trim() ?? "") == desc)
+            .Select(b => b.Id)
+            .ToList();
+
+        int count = 0;
+        foreach (var id in templatesDaEliminare)
+        {
+            if (_context.BilancioTemplate.Delete(id))
+                count++;
+        }
+
+        _context.Checkpoint();
+        return count;
+    }
+
     public int Insert(BilancioTemplate bilancio)
     {
         var id = _context.BilancioTemplate.Insert(bilancio);
@@ -59,7 +101,13 @@ public class BilancioTemplateRepository
 
     public void InsertBulk(IEnumerable<BilancioTemplate> bilanci)
     {
-        _context.BilancioTemplate.InsertBulk(bilanci);
+        // ⚠️ IMPORTANTE: InsertBulk di LiteDB NON assegna gli ID agli oggetti in memoria!
+        // Per garantire ID univoci, usiamo Insert singoli che assegnano l'ID a ogni oggetto
+        foreach (var bilancio in bilanci)
+        {
+            _context.BilancioTemplate.Insert(bilancio);
+            System.Diagnostics.Debug.WriteLine($"[INSERT TEMPLATE] Inserito ID={bilancio.Id}, Codice={bilancio.CodiceMastrino}, Desc='{bilancio.DescrizioneBilancio ?? "(vuota)"}'");
+        }
         _context.Checkpoint();
     }
 
@@ -122,11 +170,24 @@ public class BilancioTemplateRepository
     {
         var allBilanci = _context.BilancioTemplate.FindAll().ToList();
         
+        // 🔍 DEBUG: Log totale righe e descrizioni uniche
+        System.Diagnostics.Debug.WriteLine($"[GET GRUPPI TEMPLATE] Totale righe nel DB: {allBilanci.Count}");
+        var descrizioniUniche = allBilanci.Select(b => b.DescrizioneBilancio ?? "(vuota)").Distinct().ToList();
+        System.Diagnostics.Debug.WriteLine($"[GET GRUPPI TEMPLATE] Descrizioni uniche: {string.Join(", ", descrizioniUniche)}");
+        
+        // 🎯 IMPORTANTE: Raggruppa per ClienteId, Mese, Anno E DESCRIZIONE
         var gruppi = allBilanci
-            .GroupBy(b => new { b.ClienteId, b.Mese, b.Anno })
+            .GroupBy(b => new { 
+                b.ClienteId, 
+                b.Mese, 
+                b.Anno,
+                Descrizione = b.DescrizioneBilancio ?? "" // Gestisce descrizioni null
+            })
             .Select(g =>
             {
                 var primaRiga = g.OrderBy(x => x.DataImport).First();
+                
+                System.Diagnostics.Debug.WriteLine($"[GET GRUPPI TEMPLATE] Gruppo: Cliente={primaRiga.ClienteNome}, Periodo={g.Key.Mese}/{g.Key.Anno}, Desc='{g.Key.Descrizione}', Righe={g.Count()}");
                 
                 return new BilancioGruppo
                 {
@@ -146,7 +207,9 @@ public class BilancioTemplateRepository
             .ThenBy(g => g.ClienteNome)
             .ToList();
         
+        System.Diagnostics.Debug.WriteLine($"[GET GRUPPI TEMPLATE] Gruppi creati: {gruppi.Count}");
         return gruppi;
     }
+
 }
 

@@ -19,7 +19,8 @@ public class ExcelBilancioService
         int mese,
         int anno,
         int importedBy,
-        string importedByName)
+        string importedByName,
+        string tipoBilancio = "CE")
     {
         var bilanci = new List<BilancioContabile>();
 
@@ -95,6 +96,7 @@ public class ExcelBilancioService
                 Mese = mese,
                 Anno = anno,
                 DescrizioneBilancio = descrizioneBilancio,
+                TipoBilancio = tipoBilancio,
                 CodiceMastrino = codice,
                 DescrizioneMastrino = descrizione,
                 Importo = importo,

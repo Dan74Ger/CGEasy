@@ -1,10 +1,12 @@
 using System.ComponentModel;
 using System.Runtime.CompilerServices;
+using LiteDB;
 
 namespace CGEasy.Core.Models;
 
 public class BilancioTemplate : INotifyPropertyChanged
 {
+    [BsonId]
     public int Id { get; set; }
     public int ClienteId { get; set; }
     public string ClienteNome { get; set; } = string.Empty;

@@ -1,16 +1,19 @@
 using System.ComponentModel;
 using System.Runtime.CompilerServices;
+using LiteDB;
 
 namespace CGEasy.Core.Models;
 
 public class BilancioContabile : INotifyPropertyChanged
 {
+    [BsonId]
     public int Id { get; set; }
     public int ClienteId { get; set; }
     public string ClienteNome { get; set; } = string.Empty;
     public int Mese { get; set; } // 1-12
     public int Anno { get; set; }
-    public string? DescrizioneBilancio { get; set; } // NUOVO: Descrizione del bilancio
+    public string? DescrizioneBilancio { get; set; } // Descrizione del bilancio
+    public string TipoBilancio { get; set; } = "CE"; // CE = Conto Economico, SP = Stato Patrimoniale
     public string CodiceMastrino { get; set; } = string.Empty;
     public string DescrizioneMastrino { get; set; } = string.Empty;
     public decimal Importo { get; set; }

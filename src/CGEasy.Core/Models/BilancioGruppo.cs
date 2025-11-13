@@ -10,6 +10,7 @@ public class BilancioGruppo : INotifyPropertyChanged
     public int Mese { get; set; }
     public int Anno { get; set; }
     public string? Descrizione { get; set; }
+    public string TipoBilancio { get; set; } = "CE"; // CE o SP
     public DateTime DataImport { get; set; }
     public string ImportedByName { get; set; } = string.Empty;
     public int NumeroRighe { get; set; }

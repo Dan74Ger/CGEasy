@@ -449,6 +449,12 @@ namespace CGEasy.Core.Data
         public ILiteCollection<StatisticaSPSalvata> StatisticheSPSalvate =>
             _database.GetCollection<StatisticaSPSalvata>("statistiche_sp_salvate");
 
+        /// <summary>
+        /// Collection statistiche CE salvate
+        /// </summary>
+        public ILiteCollection<StatisticaCESalvata> StatisticheCESalvate =>
+            _database.GetCollection<StatisticaCESalvata>("statistiche_ce_salvate");
+
         // ===== UTILITY METHODS =====
 
         /// <summary>

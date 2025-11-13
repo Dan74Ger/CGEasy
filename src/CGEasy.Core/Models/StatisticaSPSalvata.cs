@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using LiteDB;
 
 namespace CGEasy.Core.Models;
 
@@ -8,6 +9,7 @@ namespace CGEasy.Core.Models;
 /// </summary>
 public class StatisticaSPSalvata
 {
+    [BsonId]
     public int Id { get; set; }
     
     /// <summary>
