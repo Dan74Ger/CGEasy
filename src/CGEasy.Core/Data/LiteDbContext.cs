@@ -48,9 +48,9 @@ namespace CGEasy.Core.Data
 
         /// <summary>
         /// Costruttore - Usa percorso database di default
-        /// Prova prima SENZA password, poi CON password se fallisce
+        /// Determina automaticamente se usare password o meno
         /// </summary>
-        public LiteDbContext() : this(DefaultDatabasePath, null)
+        public LiteDbContext() : this(DefaultDatabasePath, GetPasswordForDatabase())
         {
         }
 
