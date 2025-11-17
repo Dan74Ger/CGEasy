@@ -11,23 +11,22 @@ CGEasy su GitHub, inclusi file nuovi, modificati ed eliminati.
 🔧 COSA FA LO SCRIPT
 --------------------
 [1] Verifica lo stato del repository Git
-[2] Aggiunge TUTTI i file in 3 passaggi:
-    ✓ git add -u      → File modificati già tracciati
-    ✓ git add .       → Tutti i file nuovi nella directory corrente
-    ✓ git add -f src/ → Aggiunge forzatamente file in src/CGEasy.Core e src/CGEasy.App
+[2] Aggiunge TUTTI i file con un unico comando ottimizzato:
+    ✓ git add -A  → Aggiunge tutti i file (modificati, nuovi, eliminati)
+                     Sopprime i warning LF/CRLF per velocità
 [3] Mostra i file che verranno committati
-[3.1] Mostra eventuali file non tracciati rimasti
 [4] Crea commit con timestamp automatico: "Update GG/MM/AAAA HH:MM"
 [5] Push su GitHub (repository Dan74Ger/CGEasy)
 
 ✅ VANTAGGI DELLO SCRIPT MIGLIORATO
 ------------------------------------
-✓ Aggiunge TUTTI i file (anche nuovi ViewModels e Views)
-✓ Usa 3 comandi git add diversi per massima copertura
-✓ Mostra file non tracciati per controllo manuale
+✓ Aggiunge TUTTI i file con un solo comando (git add -A)
+✓ Veloce ed efficiente - sopprime warning inutili (LF/CRLF)
+✓ Nessun loop - esecuzione rapida
+✓ Mostra chiaramente i file da committare
 ✓ Elenca i file committati al termine
-✓ Messaggi di errore più chiari
-✓ Verifica forzata su cartelle critiche (src/)
+✓ Messaggi di errore chiari con suggerimenti
+✓ Token sicuro in file esterno (non nel codice)
 
 ⚙️ COME USARE
 --------------
@@ -58,8 +57,11 @@ CGEasy su GitHub, inclusi file nuovi, modificati ed eliminati.
 
 🔍 RISOLUZIONE PROBLEMI
 ------------------------
-PROBLEMA: "File non tracciati rimasti" mostra file che voglio committare
-SOLUZIONE: Assicurati che non siano in .gitignore, poi rimuovili dal .gitignore
+PROBLEMA: Lo script va in loop e mostra troppi warning
+SOLUZIONE: RISOLTO! Ora usa git add -A con soppressione warning (2>nul)
+
+PROBLEMA: "ERRORE Token GitHub non configurato!"
+SOLUZIONE: Crea file git_token.txt nella root con il tuo token personale GitHub
 
 PROBLEMA: "ERRORE durante git add"
 SOLUZIONE: Verifica di avere Git installato e di essere nella directory corretta
@@ -68,7 +70,7 @@ PROBLEMA: "ERRORE durante il push"
 SOLUZIONE: Verifica connessione internet, permessi e validità del token GitHub
 
 PROBLEMA: Lo script dice "NESSUNA MODIFICA DA COMMITTARE"
-SOLUZIONE: Controlla se ci sono file non tracciati sopra (sezione [3.1])
+SOLUZIONE: Normale - significa che tutti i file sono già aggiornati su GitHub
 
 📁 FILE COMMITTATI
 -------------------

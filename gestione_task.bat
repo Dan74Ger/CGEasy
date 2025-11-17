@@ -39,37 +39,28 @@ echo OK
 echo.
 
 echo [2] Aggiunta di TUTTI i file (modificati e nuovi)...
-echo    - File modificati...
-git add -u
-echo    - File non tracciati...
-git add .
-echo    - Verifica forzata su cartelle principali...
-git add -f src/CGEasy.Core/
-git add -f src/CGEasy.App/
+echo    Attendere...
+git add -A 2>nul
 if errorlevel 1 (
     echo ERRORE durante git add!
     pause
     exit /b 1
 )
-echo OK
+echo OK - Tutti i file aggiunti
 echo.
 
 echo [3] Mostra file da committare:
 git status --short
 echo.
-echo [3.1] Verifica file non tracciati rimasti:
-git ls-files --others --exclude-standard
-echo.
 
 echo [4] Commit con messaggio: %commit_msg%
-git commit -m "%commit_msg%"
+git commit -m "%commit_msg%" 2>nul
 if errorlevel 1 (
     echo.
     echo ==========================================
     echo   NESSUNA MODIFICA DA COMMITTARE
     echo ==========================================
     echo   Tutti i file sono gia aggiornati!
-    echo   Verifica se ci sono file non tracciati sopra.
     echo ==========================================
     echo.
     pause
@@ -79,7 +70,7 @@ echo OK - Commit creato!
 echo.
 
 echo [5] Push su GitHub...
-git push https://%GIT_TOKEN%@github.com/Dan74Ger/CGEasy.git master
+git push https://%GIT_TOKEN%@github.com/Dan74Ger/CGEasy.git master 2>nul
 if errorlevel 1 (
     echo ERRORE durante il push!
     echo Verifica la connessione di rete o i permessi.
