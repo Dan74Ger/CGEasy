@@ -6,6 +6,9 @@
 # dotenv files
 .env
 
+# GitHub token file (security)
+git_token.txt
+
 # User-specific files
 *.rsuser
 *.suo
