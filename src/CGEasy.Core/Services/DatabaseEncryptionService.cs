@@ -43,10 +43,52 @@ public class DatabaseEncryptionService
 
     /// <summary>
     /// Verifica se il database è attualmente criptato
+    /// Controlla se esiste db.key E se il database è effettivamente criptato
     /// </summary>
     public static bool IsDatabaseEncrypted()
     {
-        return File.Exists(PasswordFilePath);
+        // Se non esiste db.key, sicuramente NON è criptato
+        if (!File.Exists(PasswordFilePath))
+            return false;
+
+        // Se esiste db.key, verifica se il database è DAVVERO criptato
+        try
+        {
+            var dbPath = CGEasy.Core.Data.LiteDbContext.DefaultDatabasePath;
+            if (!File.Exists(dbPath))
+                return false; // Database non esiste ancora
+            
+            // Prova ad aprire SENZA password
+            using (var testDb = new LiteDB.LiteDatabase(dbPath))
+            {
+                // Se riesce ad aprire senza password, NON è criptato!
+                // Rimuovi db.key obsoleto
+                try
+                {
+                    File.Delete(PasswordFilePath);
+                    System.Diagnostics.Debug.WriteLine("⚠️ Rimosso db.key obsoleto - database non criptato");
+                }
+                catch { }
+                
+                return false;
+            }
+        }
+        catch (LiteDB.LiteException ex) when (ex.Message.Contains("password"))
+        {
+            // Se fallisce con errore password, allora È criptato
+            return true;
+        }
+        catch
+        {
+            // Altri errori: assumiamo NON criptato (db.key obsoleto)
+            try
+            {
+                File.Delete(PasswordFilePath);
+            }
+            catch { }
+            
+            return false;
+        }
     }
 
     /// <summary>

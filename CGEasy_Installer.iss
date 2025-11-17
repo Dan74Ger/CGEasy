@@ -110,84 +110,34 @@ Type: filesandordirs; Name: "{app}\Temp"
 [Code]
 var
   DatabasePage: TInputOptionWizardPage;
-  SharedInstallPage: TInputQueryWizardPage;
 
 procedure InitializeWizard;
 begin
-  { Pagina 1: Opzioni Database - SEMPLIFICATA }
+  { Pagina Database - Solo informativa sul percorso }
   DatabasePage := CreateInputOptionPage(wpSelectTasks,
-    'Configurazione Database', 'Opzioni database',
-    'Al primo avvio verrà creato un database VUOTO e NON CRIPTATO:',
+    'Configurazione Database', 'Percorso database',
+    'Database locale - NON in rete:',
     True, False);
-  DatabasePage.Add('Database VUOTO (solo utenti admin/admin1)');
-  DatabasePage.Add('NON criptato - puoi criptarlo dopo dalle impostazioni');
+  DatabasePage.Add('Percorso fisso: C:\db_CGEASY\cgeasy.db');
+  DatabasePage.Add('Database NON criptato (criptalo dopo dalle impostazioni)');
   
-  { Default: Entrambe selezionate (solo informative) }
+  { Entrambe selezionate (solo informative) }
   DatabasePage.Values[0] := True;
   DatabasePage.Values[1] := True;
-
-  { Pagina 2: Installazione Multi-PC (opzionale) }
-  SharedInstallPage := CreateInputQueryPage(DatabasePage.ID,
-    'Configurazione Rete (Opzionale)', 'Vuoi condividere il database in rete locale?',
-    'Se installi su più PC, puoi condividere il database per accesso multi-utente.');
-  SharedInstallPage.Add('Nome condivisione (es: CGEasy):', False);
-  SharedInstallPage.Values[0] := 'CGEasy';
 end;
 
 function NextButtonClick(CurPageID: Integer): Boolean;
-var
-  ResultCode: Integer;
-  ShareName: String;
-  SharePath: String;
 begin
   Result := True;
 
-  { Messaggio informativo sul database }
+  { Messaggio informativo - SENZA credenziali }
   if CurPageID = DatabasePage.ID then
   begin
-    MsgBox('Al primo avvio verrà creato un database VUOTO e NON CRIPTATO.' + #13#10#13#10 +
-           'IMPORTANTE:' + #13#10 +
-           '- Database inizialmente NON criptato' + #13#10 +
-           '- Accesso diretto senza password DB' + #13#10 +
-           '- Credenziali utente: admin1 / 123123' + #13#10#13#10 +
-           'Potrai criptare il database successivamente' + #13#10 +
-           'dalle impostazioni di sistema.',
+    MsgBox('Al primo avvio verrà creato automaticamente un database in:' + #13#10 +
+           'C:\db_CGEASY\cgeasy.db' + #13#10#13#10 +
+           'Database inizialmente NON criptato.' + #13#10 +
+           'Puoi criptarlo dopo dalle impostazioni Sistema.',
            mbInformation, MB_OK);
-  end;
-
-  { Dopo la selezione dei task, configura la condivisione }
-  if CurPageID = SharedInstallPage.ID then
-  begin
-    ShareName := SharedInstallPage.Values[0];
-    SharePath := 'C:\db_CGEASY';
-    
-    if ShareName <> '' then
-    begin
-      { Crea condivisione di rete usando net share }
-      if MsgBox('Vuoi creare la condivisione di rete "' + ShareName + '"?' + #13#10 +
-                'Questo permetterà ad altri PC di accedere al database.' + #13#10#13#10 +
-                'Percorso: \\' + ExpandConstant('{computername}') + '\' + ShareName,
-                mbConfirmation, MB_YESNO) = IDYES then
-      begin
-        { Rimuovi condivisione esistente }
-        Exec('net.exe', 'share ' + ShareName + ' /delete', '', SW_HIDE, ewWaitUntilTerminated, ResultCode);
-        
-        { Crea nuova condivisione }
-        if Exec('net.exe', 'share ' + ShareName + '=' + SharePath + ' /grant:everyone,FULL', '', SW_HIDE, ewWaitUntilTerminated, ResultCode) then
-        begin
-          MsgBox('Condivisione creata con successo!' + #13#10#13#10 +
-                 'I client possono accedere al database tramite:' + #13#10 +
-                 '\\' + ExpandConstant('{computername}') + '\' + ShareName + '\cgeasy.db',
-                 mbInformation, MB_OK);
-        end
-        else
-        begin
-          MsgBox('ATTENZIONE: Impossibile creare la condivisione.' + #13#10 +
-                 'Potrebbe essere necessario configurarla manualmente.', 
-                 mbError, MB_OK);
-        end;
-      end;
-    end;
   end;
 end;
 
@@ -216,22 +166,16 @@ procedure DeinitializeSetup();
 var
   ButtonPressed: Integer;
 begin
-  { Messaggio finale con credenziali }
+  { Messaggio finale - SENZA credenziali }
   if not WizardSilent then
   begin
     ButtonPressed := MsgBox(
       'Installazione completata con successo!' + #13#10#13#10 +
-      '==================================' + #13#10 +
-      'CREDENZIALI DI ACCESSO' + #13#10 +
-      '==================================' + #13#10 +
-      'Username: admin1' + #13#10 +
-      'Password: 123123' + #13#10#13#10 +
       'Database: C:\db_CGEASY\cgeasy.db' + #13#10 +
       'Stato: NON CRIPTATO (inizialmente)' + #13#10#13#10 +
       'Al primo avvio verrà creato' + #13#10 +
       'un database vuoto.' + #13#10#13#10 +
-      'Potrai criptarlo dopo dalle impostazioni!' + #13#10#13#10 +
-      'IMPORTANTE: Annota queste credenziali!',
+      'Puoi criptarlo dopo dalle impostazioni!',
       mbInformation, MB_OK);
   end;
 end;

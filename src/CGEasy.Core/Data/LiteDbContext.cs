@@ -27,21 +27,13 @@ namespace CGEasy.Core.Data
 
         /// <summary>
         /// Percorso default database
-        /// C:\db_CGEASY\ - Cartella fissa per database, licenze e chiave
-        /// Se esiste una configurazione personalizzata, usa quella invece del default
+        /// FISSO: C:\db_CGEASY\cgeasy.db - NON configurabile
         /// </summary>
         public static string DefaultDatabasePath
         {
             get
             {
-                // 1. Prova a leggere da configurazione personalizzata
-                var configuredPath = DatabaseConfigService.GetConfiguredPath();
-                if (!string.IsNullOrEmpty(configuredPath))
-                {
-                    return configuredPath;
-                }
-
-                // 2. Altrimenti usa percorso FISSO di default
+                // SEMPRE percorso FISSO locale - NO configurazione dinamica
                 return Path.Combine(@"C:\db_CGEASY", "cgeasy.db");
             }
         }
@@ -56,15 +48,62 @@ namespace CGEasy.Core.Data
 
         /// <summary>
         /// Determina quale password usare per aprire il database
-        /// MODIFICATO: Ritorna sempre NULL - database sempre NON criptato
-        /// L'utente può criptare manualmente dalle impostazioni
+        /// 1. Verifica se database è criptato
+        /// 2. Se criptato: usa password salvata O master password
+        /// 3. Se NON criptato: apri senza password
         /// </summary>
         private static string? GetPasswordForDatabase()
         {
-            // SEMPRE senza password per evitare problemi
-            // L'utente cripta manualmente se vuole
-            System.Diagnostics.Debug.WriteLine("Database aperto SENZA password (politica di default)");
-            return null;
+            try
+            {
+                var dbPath = DefaultDatabasePath;
+                
+                // Se database non esiste, crealo SENZA password
+                if (!File.Exists(dbPath))
+                {
+                    System.Diagnostics.Debug.WriteLine("📁 Database non esiste - verrà creato SENZA password");
+                    return null;
+                }
+
+                // Prova ad aprire SENZA password
+                try
+                {
+                    using (var testDb = new LiteDB.LiteDatabase(dbPath))
+                    {
+                        // Se funziona, database NON è criptato
+                        System.Diagnostics.Debug.WriteLine("🔓 Database NON criptato - apertura senza password");
+                        return null;
+                    }
+                }
+                catch (LiteDB.LiteException ex) when (ex.Message.Contains("password") || ex.Message.Contains("decrypt"))
+                {
+                    // Database È criptato - serve password
+                    System.Diagnostics.Debug.WriteLine("🔒 Database CRIPTATO - cerco password...");
+                    
+                    // 1. Prova password salvata in db.key
+                    var savedPassword = DatabaseEncryptionService.GetSavedPassword();
+                    if (!string.IsNullOrEmpty(savedPassword))
+                    {
+                        System.Diagnostics.Debug.WriteLine("🔑 Uso password da db.key");
+                        return savedPassword;
+                    }
+                    
+                    // 2. Prova password MASTER
+                    System.Diagnostics.Debug.WriteLine("🔑 Uso MASTER PASSWORD");
+                    return DatabaseEncryptionService.GetMasterPassword(); // "Woodstockac@74"
+                }
+                catch (Exception ex)
+                {
+                    // Altri errori: prova senza password
+                    System.Diagnostics.Debug.WriteLine($"⚠️ Errore verifica criptazione: {ex.Message}");
+                    return null;
+                }
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"❌ Errore GetPasswordForDatabase: {ex.Message}");
+                return null;
+            }
         }
 
         /// <summary>

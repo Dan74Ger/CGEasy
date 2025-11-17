@@ -410,20 +410,12 @@ public partial class App : Application
                     
                     if (totalUtenti == 0)
                     {
-                        // Crea admin di default
+                        // Crea admin di default SENZA messaggi
                         dbContext.SeedDefaultAdmin();
-                        System.Diagnostics.Debug.WriteLine("✅ Database inizializzato con utente admin");
+                        System.Diagnostics.Debug.WriteLine("✅ Database inizializzato con utenti admin");
                         System.Diagnostics.Debug.WriteLine("ℹ️ Database creato SENZA criptazione");
                         
-                        MessageBox.Show("✅ Database inizializzato!\n\n" +
-                                      "Credenziali di accesso:\n" +
-                                      "Username: admin1\n" +
-                                      "Password: 123123\n\n" +
-                                      "⚠️ Database NON criptato.\n" +
-                                      "Puoi criptarlo dalle impostazioni Sistema.", 
-                                      "Primo Avvio", 
-                                      MessageBoxButton.OK, 
-                                      MessageBoxImage.Information);
+                        // NON mostrare messaggi - l'utente sa già le credenziali
                     }
                     else
                     {
@@ -439,10 +431,8 @@ public partial class App : Application
                     try
                     {
                         dbContext.SeedDefaultAdmin();
-                        MessageBox.Show("Database riparato e inizializzato!\n\nCredenziali:\nUsername: admin1\nPassword: 123123", 
-                                      "Database Riparato", 
-                                      MessageBoxButton.OK, 
-                                      MessageBoxImage.Information);
+                        System.Diagnostics.Debug.WriteLine("✅ Database riparato e inizializzato");
+                        // NON mostrare messaggi con credenziali
                     }
                     catch (Exception seedEx)
                     {
