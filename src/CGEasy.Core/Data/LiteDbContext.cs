@@ -455,6 +455,18 @@ namespace CGEasy.Core.Data
         public ILiteCollection<StatisticaCESalvata> StatisticheCESalvate =>
             _database.GetCollection<StatisticaCESalvata>("statistiche_ce_salvate");
 
+    /// <summary>
+    /// Collezione Indici Personalizzati
+    /// </summary>
+    public ILiteCollection<IndicePersonalizzato> IndiciPersonalizzati =>
+        _database.GetCollection<IndicePersonalizzato>("indici_personalizzati");
+
+    /// <summary>
+    /// Collezione Configurazioni Indici (standard e personalizzati)
+    /// </summary>
+    public ILiteCollection<IndiceConfigurazione> IndiciConfigurazioni =>
+        _database.GetCollection<IndiceConfigurazione>("indici_configurazioni");
+
         // ===== UTILITY METHODS =====
 
         /// <summary>
