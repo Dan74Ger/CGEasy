@@ -1,0 +1,302 @@
+╔════════════════════════════════════════════════════════════════════════╗
+║           GUIDA INSTALLER INNO SETUP - CGEasy v2.0                     ║
+║         Database con Opzione Dati di Sviluppo/Esempio                  ║
+╚════════════════════════════════════════════════════════════════════════╝
+
+📦 PANORAMICA
+═════════════
+L'installer è stato modificato per offrire DUE opzioni di installazione:
+
+1️⃣  DATABASE VUOTO (produzione)
+    - Solo utenti admin/admin1
+    - Database creato pulito al primo avvio
+    - Ideale per installazioni su client finali
+
+2️⃣  DATABASE CON DATI DI ESEMPIO (test/demo)
+    - Include database di sviluppo completo
+    - Clienti, bilanci, statistiche, indici già configurati
+    - Ideale per test, demo e formazione
+
+═══════════════════════════════════════════════════════════════════════
+
+🛠️ PREPARAZIONE (PRIMA DI COMPILARE INSTALLER)
+══════════════════════════════════════════════
+
+STEP 1: Assicurati che il database di sviluppo esista
+──────────────────────────────────────────────────────
+Percorso richiesto: C:\db_CGEASY\
+├── cgeasy.db       ← Database sviluppo (con tutti i dati)
+├── db.key          ← File password criptata
+└── licenses.json   ← File licenze (opzionale)
+
+⚠️ IMPORTANTE: Questi file DEVONO esistere PRIMA di compilare l'installer!
+
+STEP 2: Backup del database attuale (se necessario)
+───────────────────────────────────────────────────
+Se il tuo database di sviluppo è in uso:
+
+PowerShell:
+```powershell
+# Chiudi l'applicazione CGEasy
+Stop-Process -Name "CGEasy.App" -ErrorAction SilentlyContinue
+
+# Backup di sicurezza
+Copy-Item "C:\db_CGEASY\*" "C:\backup_db_pre_installer\" -Force
+```
+
+STEP 3: Build Release dell'applicazione
+───────────────────────────────────────
+```powershell
+cd C:\devcg-group\appcg_easy_project
+dotnet build src/CGEasy.App/CGEasy.App.csproj -c Release --no-incremental
+```
+
+Verifica output in: `src\CGEasy.App\bin\Release\net8.0-windows\`
+
+═══════════════════════════════════════════════════════════════════════
+
+📋 COMPILAZIONE INSTALLER
+═════════════════════════
+
+METODO 1: Da Inno Setup IDE
+────────────────────────────
+1. Apri "C:\Program Files (x86)\Inno Setup 6\Compil32.exe"
+2. File → Open → Seleziona "CGEasy_Installer.iss"
+3. Build → Compile (F9)
+4. Attendi compilazione (~30-60 secondi)
+
+METODO 2: Da PowerShell (Automatico)
+─────────────────────────────────────
+```powershell
+cd C:\devcg-group\appcg_easy_project
+& "C:\Program Files (x86)\Inno Setup 6\ISCC.exe" "CGEasy_Installer.iss"
+```
+
+OUTPUT:
+  ✅ installer_output\CGEasy_Setup_v2.0.exe
+  📦 Dimensioni: ~15-50 MB (dipende dal DB)
+
+═══════════════════════════════════════════════════════════════════════
+
+🚀 UTILIZZO INSTALLER
+═════════════════════
+
+FLUSSO INSTALLAZIONE
+────────────────────
+
+1. **Benvenuto**
+   └─ Messaggio di benvenuto con info sul database
+
+2. **Licenza**
+   └─ Accetta i termini di licenza
+
+3. **Percorso Installazione**
+   └─ Default: C:\Program Files\CGEasy\
+   └─ Modificabile se necessario
+
+4. **⭐ OPZIONI DATABASE** (NUOVA PAGINA)
+   └─ [ ] Database VUOTO (solo admin/admin1)
+   └─ [✓] Database con DATI DI ESEMPIO ← Seleziona questa!
+   └─ [✓] Criptazione automatica (sempre attiva)
+   
+   📝 Nota: Selezionare "Database con DATI DI ESEMPIO" per usare
+            il database di sviluppo completo
+
+5. **Configurazione Rete** (Opzionale)
+   └─ Nome condivisione per multi-PC
+   └─ Default: CGEasy
+
+6. **Icone Desktop**
+   └─ [✓] Crea icona desktop
+   └─ [ ] Avvia all'avvio Windows
+
+7. **Installazione**
+   └─ Copia file applicazione
+   └─ Copia database (se opzione 2 selezionata)
+   └─ Crea cartelle (Backups, Logs, Allegati)
+   └─ Configura registry
+
+8. **Completamento**
+   └─ Messaggio con credenziali
+   └─ [✓] Avvia CGEasy ora
+
+═══════════════════════════════════════════════════════════════════════
+
+🔑 CREDENZIALI POST-INSTALLAZIONE
+═════════════════════════════════
+
+OPZIONE 1: Database Vuoto
+─────────────────────────
+Username: admin1
+Password: 123123
+Password DB: Woodstockac@74
+
+Database creato al primo avvio: C:\db_CGEASY\cgeasy.db
+Dimensioni iniziali: ~200 KB
+
+OPZIONE 2: Database con Dati di Esempio
+───────────────────────────────────────
+Username: admin1
+Password: 123123
+Password DB: Woodstockac@74
+
+Database copiato dall'installer: C:\db_CGEASY\cgeasy.db
+Dimensioni: ~15-50 MB (dipende dai dati)
+
+Include:
+✅ Clienti di esempio con dati reali
+✅ Bilanci contabili multipli
+✅ Statistiche CE e SP configurate
+✅ Indici personalizzati già creati
+✅ Template bilanci
+✅ Utenti admin/admin1 configurati
+
+═══════════════════════════════════════════════════════════════════════
+
+⚙️ COSA FA L'INSTALLER (Dettaglio Tecnico)
+══════════════════════════════════════════
+
+FILE COPIATI
+────────────
+Applicazione:
+  C:\Program Files\CGEasy\
+  ├── CGEasy.App.exe
+  ├── CGEasy.Core.dll
+  ├── LiteDB.dll
+  ├── ClosedXML.dll
+  └── ... (tutte le dipendenze)
+
+Database (SE "Dati di Esempio" selezionato):
+  C:\db_CGEASY\
+  ├── cgeasy.db       ← Copiato da sviluppo
+  ├── db.key          ← Copiato da sviluppo
+  └── licenses.json   ← Copiato da sviluppo
+
+Cartelle create:
+  C:\db_CGEASY\
+  ├── Backups\        ← Per backup automatici
+  ├── Logs\           ← Log applicazione
+  └── Allegati\       ← File allegati
+
+Documentazione:
+  C:\Program Files\CGEasy\Docs\
+  ├── README.md
+  ├── INSTALLAZIONE_DA_ZERO.md
+  └── GUIDA_DATABASE.md
+
+Registry:
+  HKLM\Software\CGEasy\
+  ├── DatabasePath = C:\db_CGEASY\cgeasy.db
+  ├── Version = 2.0
+  └── InstallPath = C:\Program Files\CGEasy
+
+═══════════════════════════════════════════════════════════════════════
+
+🔍 VERIFICA POST-INSTALLAZIONE
+══════════════════════════════
+
+CONTROLLI DA FARE:
+──────────────────
+1. ✅ Applicazione avviata correttamente
+2. ✅ Login con admin1/123123 funziona
+3. ✅ Database leggibile (no errori "File is not encrypted")
+4. ✅ Clienti/Bilanci visibili (se opzione 2)
+5. ✅ Indici personalizzati presenti (se opzione 2)
+
+COMANDI VERIFICA (PowerShell):
+────────────────────────────────
+```powershell
+# Controlla file installati
+Test-Path "C:\Program Files\CGEasy\CGEasy.App.exe"
+Test-Path "C:\db_CGEASY\cgeasy.db"
+Test-Path "C:\db_CGEASY\db.key"
+
+# Dimensioni database
+Get-Item "C:\db_CGEASY\cgeasy.db" | Select-Object Name, Length
+
+# Verifica criptazione (deve dare errore senza password)
+# Se dà errore = criptato correttamente ✅
+```
+
+═══════════════════════════════════════════════════════════════════════
+
+⚠️ TROUBLESHOOTING
+══════════════════
+
+PROBLEMA: "File not found: C:\db_CGEASY\cgeasy.db"
+SOLUZIONE: Il database di sviluppo non esisteva in C:\db_CGEASY\ 
+           durante la compilazione dell'installer.
+           Ricrea l'installer dopo aver copiato il database.
+
+PROBLEMA: "Database file is not encrypted"
+SOLUZIONE: Manca il file db.key. Verifica che sia stato copiato.
+
+PROBLEMA: "Invalid password"
+SOLUZIONE: db.key non corrisponde a cgeasy.db. Assicurati di 
+           copiare ENTRAMBI i file dalla stessa fonte.
+
+PROBLEMA: Installer molto grande (>100 MB)
+SOLUZIONE: Normale se includi database con molti dati.
+           Per ridurre: usa database più piccolo o opzione vuota.
+
+PROBLEMA: "Access denied" durante installazione
+SOLUZIONE: Esegui installer come Amministratore (tasto destro)
+
+═══════════════════════════════════════════════════════════════════════
+
+📊 CONFRONTO OPZIONI
+════════════════════
+
+┌────────────────────┬──────────────────┬────────────────────────┐
+│ Caratteristica     │ DB Vuoto         │ DB Dati Esempio        │
+├────────────────────┼──────────────────┼────────────────────────┤
+│ Dimensione Setup   │ ~10 MB           │ ~20-60 MB              │
+│ Tempo Install      │ 10-20 sec        │ 15-30 sec              │
+│ Clienti            │ 0                │ 5-50                   │
+│ Bilanci            │ 0                │ 10-100                 │
+│ Indici Personaliz. │ 0                │ 3-10                   │
+│ Primo Avvio        │ Crea DB          │ Già pronto             │
+│ Uso Consigliato    │ Produzione       │ Test/Demo/Formazione   │
+└────────────────────┴──────────────────┴────────────────────────┘
+
+═══════════════════════════════════════════════════════════════════════
+
+🎯 CASI D'USO
+═════════════
+
+SCENARIO A: Installazione Cliente Finale
+─────────────────────────────────────────
+✅ Scegli: Database VUOTO
+Motivo: Cliente parte con i propri dati da zero
+
+SCENARIO B: Demo per Potenziale Cliente
+───────────────────────────────────────
+✅ Scegli: Database con DATI DI ESEMPIO
+Motivo: Mostrare funzionalità con dati già presenti
+
+SCENARIO C: Formazione Utenti
+─────────────────────────────
+✅ Scegli: Database con DATI DI ESEMPIO
+Motivo: Utenti possono esercitarsi senza creare dati
+
+SCENARIO D: Test Sviluppo su Nuova Macchina
+───────────────────────────────────────────
+✅ Scegli: Database con DATI DI ESEMPIO
+Motivo: Riprodurre ambiente di sviluppo completo
+
+═══════════════════════════════════════════════════════════════════════
+
+📞 SUPPORTO
+═══════════
+
+Per problemi con l'installer:
+1. Verifica i percorsi in CGEasy_Installer.iss (righe 14-17)
+2. Controlla che il database esista in C:\db_CGEASY\
+3. Verifica permessi cartelle (deve essere Admin)
+4. Controlla log Inno Setup in installer_output\
+
+═══════════════════════════════════════════════════════════════════════
+Ultimo aggiornamento: 17/11/2025
+Versione Installer: 2.0 (Opzione Database Sviluppo)
+═══════════════════════════════════════════════════════════════════════
+

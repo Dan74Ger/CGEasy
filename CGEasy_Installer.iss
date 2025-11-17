@@ -10,6 +10,12 @@
 #define MyAppURL "https://github.com/Dan74Ger/CGEasy"
 #define MyAppExeName "CGEasy.App.exe"
 
+; Percorsi database di sviluppo (da includere nell'installer)
+#define DevDbPath "C:\db_CGEASY"
+#define DevDbFile "cgeasy.db"
+#define DevDbKeyFile "db.key"
+#define DevLicensesFile "licenses.json"
+
 [Setup]
 ; Informazioni applicazione
 AppId={{8F7A3B2C-1D4E-5F6A-9B8C-7D6E5F4A3B2C}
@@ -58,6 +64,12 @@ Name: "startupicon"; Description: "Avvia CGEasy all'avvio di Windows"; GroupDesc
 ; File applicazione (binari compilati)
 Source: "src\CGEasy.App\bin\Release\net8.0-windows\*"; DestDir: "{app}"; Flags: ignoreversion recursesubdirs createallsubdirs
 
+; DATABASE DI SVILUPPO PRE-POPOLATO
+; IMPORTANTE: Questi file verranno copiati SOLO se l'utente sceglie "Database con dati di esempio"
+Source: "{#DevDbPath}\{#DevDbFile}"; DestDir: "C:\db_CGEASY"; Flags: ignoreversion confirmoverwrite; Check: ShouldInstallDevDatabase
+Source: "{#DevDbPath}\{#DevDbKeyFile}"; DestDir: "C:\db_CGEASY"; Flags: ignoreversion confirmoverwrite; Check: ShouldInstallDevDatabase
+Source: "{#DevDbPath}\{#DevLicensesFile}"; DestDir: "C:\db_CGEASY"; Flags: ignoreversion onlyifdoesntexist; Check: ShouldInstallDevDatabase
+
 ; File documentazione
 Source: "README.md"; DestDir: "{app}\Docs"; Flags: ignoreversion
 Source: "INSTALLAZIONE_DA_ZERO.md"; DestDir: "{app}\Docs"; Flags: ignoreversion
@@ -101,18 +113,28 @@ Type: filesandordirs; Name: "{app}\Temp"
 var
   DatabasePage: TInputOptionWizardPage;
   SharedInstallPage: TInputQueryWizardPage;
+  UseDevDatabase: Boolean;
+
+function ShouldInstallDevDatabase(): Boolean;
+begin
+  Result := UseDevDatabase;
+end;
 
 procedure InitializeWizard;
 begin
   { Pagina 1: Opzioni Database }
   DatabasePage := CreateInputOptionPage(wpSelectTasks,
-    'Configurazione Database', 'Seleziona le opzioni per il database',
-    'Il database verrà creato in C:\db_CGEASY\ con le seguenti opzioni:',
+    'Configurazione Database', 'Seleziona il tipo di database da installare',
+    'Scegli se installare un database vuoto o con dati di esempio già popolati:',
     True, False);
-  DatabasePage.Add('Database vuoto (solo utenti admin e admin1)');
-  DatabasePage.Add('Criptazione automatica con password master');
+  DatabasePage.Add('Database VUOTO (solo utenti admin e admin1)');
+  DatabasePage.Add('Database con DATI DI ESEMPIO (include clienti, bilanci, indici)');
+  DatabasePage.Add('Criptazione automatica con password master (Woodstockac@74)');
+  
+  { Default: Database vuoto }
   DatabasePage.Values[0] := True;
-  DatabasePage.Values[1] := True;
+  DatabasePage.Values[1] := False;
+  DatabasePage.Values[2] := True;
 
   { Pagina 2: Installazione Multi-PC (opzionale) }
   SharedInstallPage := CreateInputQueryPage(DatabasePage.ID,
@@ -129,6 +151,32 @@ var
   SharePath: String;
 begin
   Result := True;
+
+  { Cattura la scelta del tipo di database }
+  if CurPageID = DatabasePage.ID then
+  begin
+    UseDevDatabase := DatabasePage.Values[1]; { True se "Dati di esempio" è selezionato }
+    
+    if UseDevDatabase then
+    begin
+      MsgBox('Verrà installato il database con dati di esempio.' + #13#10#13#10 +
+             'IMPORTANTE:' + #13#10 +
+             '- Il database include clienti, bilanci e indici già configurati' + #13#10 +
+             '- Password DB: Woodstockac@74' + #13#10 +
+             '- Credenziali: admin1 / 123123' + #13#10#13#10 +
+             'Utile per test e demo del software.',
+             mbInformation, MB_OK);
+    end
+    else
+    begin
+      MsgBox('Verrà installato un database vuoto.' + #13#10#13#10 +
+             'Al primo avvio l''applicazione creerà automaticamente:' + #13#10 +
+             '- Database criptato' + #13#10 +
+             '- Utenti admin e admin1' + #13#10 +
+             '- Password DB: Woodstockac@74',
+             mbInformation, MB_OK);
+    end;
+  end;
 
   { Dopo la selezione dei task, configura la condivisione }
   if CurPageID = SharedInstallPage.ID then
@@ -172,36 +220,64 @@ var
 begin
   if CurStep = ssPostInstall then
   begin
-    { Crea file licenses.json se non esiste }
-    if not FileExists('C:\db_CGEASY\licenses.json') then
+    { Crea file licenses.json se non esiste (solo se DB vuoto) }
+    if not UseDevDatabase then
     begin
-      LicensesJson := '{"LicenseInfo":{"ProductName":"CGEasy","Version":"1.0.0","LicenseType":"Trial","IsActivated":false},"Licenses":[]}';
-      SaveStringToFile('C:\db_CGEASY\licenses.json', LicensesJson, False);
+      if not FileExists('C:\db_CGEASY\licenses.json') then
+      begin
+        LicensesJson := '{"LicenseInfo":{"ProductName":"CGEasy","Version":"1.0.0","LicenseType":"Trial","IsActivated":false},"Licenses":[]}';
+        SaveStringToFile('C:\db_CGEASY\licenses.json', LicensesJson, False);
+      end;
     end;
     
-    { NOTA: db.key e cgeasy.db verranno creati automaticamente al primo avvio dell'applicazione }
-    { L'app rileva se il database non esiste e lo crea pulito con admin/admin1 }
+    { NOTA: }
+    { - Se UseDevDatabase = True: db.key, cgeasy.db e licenses.json sono già copiati dalla sezione [Files] }
+    { - Se UseDevDatabase = False: db.key e cgeasy.db verranno creati al primo avvio dell'app }
   end;
 end;
 
 procedure DeinitializeSetup();
 var
   ButtonPressed: Integer;
+  MessageText: String;
 begin
-  { Messaggio finale con credenziali }
+  { Messaggio finale con credenziali (diverso in base al tipo di DB) }
   if not WizardSilent then
   begin
-    ButtonPressed := MsgBox(
-      'Installazione completata con successo!' + #13#10#13#10 +
-      '==================================' + #13#10 +
-      'CREDENZIALI DI ACCESSO' + #13#10 +
-      '==================================' + #13#10 +
-      'Username: admin1' + #13#10 +
-      'Password: 123123' + #13#10#13#10 +
-      'Database: C:\db_CGEASY\cgeasy.db' + #13#10 +
-      'Password DB: Woodstockac@74' + #13#10#13#10 +
-      'IMPORTANTE: Annota queste credenziali!',
-      mbInformation, MB_OK);
+    if UseDevDatabase then
+    begin
+      MessageText := 
+        'Installazione completata con successo!' + #13#10#13#10 +
+        '==================================' + #13#10 +
+        'DATABASE CON DATI DI ESEMPIO' + #13#10 +
+        '==================================' + #13#10 +
+        'Username: admin1' + #13#10 +
+        'Password: 123123' + #13#10#13#10 +
+        'Database: C:\db_CGEASY\cgeasy.db' + #13#10 +
+        'Password DB: Woodstockac@74' + #13#10#13#10 +
+        'Il database include:' + #13#10 +
+        '- Clienti di esempio' + #13#10 +
+        '- Bilanci e statistiche' + #13#10 +
+        '- Indici personalizzati configurati' + #13#10#13#10 +
+        'IMPORTANTE: Annota queste credenziali!';
+    end
+    else
+    begin
+      MessageText := 
+        'Installazione completata con successo!' + #13#10#13#10 +
+        '==================================' + #13#10 +
+        'CREDENZIALI DI ACCESSO' + #13#10 +
+        '==================================' + #13#10 +
+        'Username: admin1' + #13#10 +
+        'Password: 123123' + #13#10#13#10 +
+        'Database: C:\db_CGEASY\cgeasy.db' + #13#10 +
+        'Password DB: Woodstockac@74' + #13#10#13#10 +
+        'Al primo avvio verrà creato' + #13#10 +
+        'un database vuoto e criptato.' + #13#10#13#10 +
+        'IMPORTANTE: Annota queste credenziali!';
+    end;
+    
+    ButtonPressed := MsgBox(MessageText, mbInformation, MB_OK);
   end;
 end;
 
@@ -213,6 +289,6 @@ Root: HKLM; Subkey: "Software\{#MyAppName}"; ValueType: string; ValueName: "Inst
 
 [Messages]
 ; Messaggi personalizzati in italiano
-italian.WelcomeLabel2=Questo installerà [name/ver] sul tuo computer.%n%nCGEasy è un software gestionale completo per studi professionali.%n%nSi consiglia di chiudere tutte le altre applicazioni prima di continuare.
-italian.FinishedLabel=CGEasy è stato installato con successo!%n%nPer avviare l'applicazione, usa l'icona sul desktop o dal menu Start.%n%nCredenziali di accesso:%nUsername: admin1%nPassword: 123123
+italian.WelcomeLabel2=Questo installerà [name/ver] sul tuo computer.%n%nCGEasy è un software gestionale completo per studi professionali.%n%nPotrai scegliere se installare un database vuoto o con dati di esempio per test/demo.%n%nSi consiglia di chiudere tutte le altre applicazioni prima di continuare.
+italian.FinishedLabel=CGEasy è stato installato con successo!%n%nPer avviare l'applicazione, usa l'icona sul desktop o dal menu Start.%n%nCredenziali di accesso:%nUsername: admin1%nPassword: 123123%nPassword DB: Woodstockac@74
 
